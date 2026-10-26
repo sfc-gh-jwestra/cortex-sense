@@ -1,0 +1,21 @@
+# Only game_analytics_demo is tracked for now
+/*
+!/.gitignore
+!/game_analytics_demo/
+
+# OS / tooling
+.DS_Store
+node_modules/
+.next/
+dist/
+build/
+.env*
+__pycache__/
+*.pyc
+
+# Local state & backups
+game_analytics_demo/.install_state
+game_analytics_demo/.snowflake/
+game_analytics_demo/backup/
+.venv/
+venv/

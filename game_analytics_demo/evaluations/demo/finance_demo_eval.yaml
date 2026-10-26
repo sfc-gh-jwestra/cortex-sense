@@ -1,0 +1,14 @@
+evaluation:
+  agent_params:
+    agent_name: "CORTEX_SENSE_DEMO.AGENTS.GAME_AGENT_FINANCE"
+    agent_type: "CORTEX AGENT"
+  run_params:
+    label: "demo_finance_vs_sense"
+    description: "Without Cortex Sense: finance baseline (Cortex Analyst over SV_GAME_SALES)"
+  source_metadata:
+    type: "dataset"
+    dataset_name: "CORTEX_SENSE_DEMO.EVALS.DEMO_FINANCE_VS_SENSE_V4"
+
+metrics:
+  - name: "answer_correctness"
+    version: "v3"

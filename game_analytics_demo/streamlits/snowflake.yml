@@ -1,0 +1,19 @@
+definition_version: 2
+entities:
+  GAME_SALES_DASHBOARD:
+    type: streamlit
+    identifier:
+      name: GAME_SALES_DASHBOARD
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+    title: Game Sales Dashboard
+    query_warehouse: COMPUTE_WH
+    runtime_name: SYSTEM$ST_CONTAINER_RUNTIME_PY3_11
+    compute_pool: SYSTEM_COMPUTE_POOL_CPU
+    main_file: streamlit_app.py
+    artifacts:
+      - streamlit_app.py
+      - .streamlit/config.toml
+      - static/Inter-Regular.ttf
+      - static/Inter-SemiBold.ttf
+      - static/Inter-Bold.ttf

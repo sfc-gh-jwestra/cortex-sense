@@ -1,0 +1,458 @@
+name: SV_GAME_SALES
+description: 'Domain: Game Sales. Sales titles, products, transactions, hardware, subscriptions (GAME_SALES). No link to the Catalog.'
+tables:
+  - name: CUSTOMERS
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: CUSTOMER_ACCOUNTS
+    primary_key:
+      columns:
+        - CUSTOMER_ID
+    dimensions:
+      - name: CUSTOMER_ID
+        expr: CUSTOMER_ID
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: REGION
+        expr: REGION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: STATUS
+        expr: STATUS
+        data_type: VARCHAR(1)
+        access_modifier: public_access
+    metrics:
+      - name: CUSTOMER_COUNT
+        expr: COUNT(customers.CUSTOMER_ID)
+        access_modifier: public_access
+  - name: DIGITAL_PRODUCTS
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: DIGITAL_PRODUCTS
+    primary_key:
+      columns:
+        - DIGITAL_PRODUCT_ID
+    dimensions:
+      - name: DIGITAL_PRODUCT_ID
+        expr: DIGITAL_PRODUCT_ID
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: PRODUCT_NAME
+        expr: PRODUCT_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: SKU_CODE
+        expr: SKU_CODE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: STATUS
+        expr: STATUS
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+    metrics:
+      - name: PRODUCT_COUNT
+        expr: COUNT(digital_products.DIGITAL_PRODUCT_ID)
+        access_modifier: public_access
+  - name: DIGITAL_TRANSACTIONS
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: DIGITAL_PRODUCT_TRANSACTIONS
+    primary_key:
+      columns:
+        - TRANSACTION_ID
+    dimensions:
+      - name: TITLE_ID
+        expr: TITLE_ID
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: TRANSACTION_DATE
+        expr: TRANSACTION_TIMESTAMP::DATE
+        data_type: DATE
+        access_modifier: public_access
+    facts:
+      - name: GROSS_REVENUE_AMT
+        expr: GROSS_REVENUE
+        data_type: FLOAT
+        access_modifier: public_access
+      - name: NET_DEVELOPER_REVENUE_AMT
+        expr: NET_DEVELOPER_REVENUE
+        data_type: FLOAT
+        access_modifier: public_access
+    metrics:
+      - name: TOTAL_GROSS_REVENUE
+        expr: SUM(digital_transactions.gross_revenue_amt)
+        access_modifier: public_access
+      - name: TOTAL_NET_DEVELOPER_REVENUE
+        expr: SUM(digital_transactions.net_developer_revenue_amt)
+        access_modifier: public_access
+      - name: TRANSACTION_COUNT
+        expr: COUNT(digital_transactions.TRANSACTION_ID)
+        access_modifier: public_access
+  - name: HARDWARE_PRODUCTS
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: HARDWARE_PRODUCTS
+    primary_key:
+      columns:
+        - HARDWARE_PRODUCT_ID
+    dimensions:
+      - name: PRODUCT_NAME
+        expr: PRODUCT_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: PRODUCT_TYPE
+        expr: PRODUCT_TYPE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+  - name: HARDWARE_SALES
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: HARDWARE_SALES_TRANSACTIONS
+    primary_key:
+      columns:
+        - TRANSACTION_ID
+    dimensions:
+      - name: REGION
+        expr: REGION
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: SALE_DATE
+        expr: SALE_TIMESTAMP::DATE
+        data_type: DATE
+        access_modifier: public_access
+    facts:
+      - name: HW_GROSS_REVENUE_AMT
+        expr: GROSS_REVENUE
+        data_type: FLOAT
+        access_modifier: public_access
+    metrics:
+      - name: HARDWARE_GROSS_REVENUE
+        expr: SUM(hardware_sales.hw_gross_revenue_amt)
+        access_modifier: public_access
+  - name: REVENUE_TYPES
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: REVENUE_TYPES
+    primary_key:
+      columns:
+        - CATEGORY_ID
+    dimensions:
+      - name: CATEGORY_GROUP
+        expr: CATEGORY_GROUP
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: MONETIZATION_TYPE
+        expr: MONETIZATION_TYPE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+  - name: SALES_GAME_PLATFORMS
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: GAME_PLATFORMS
+    primary_key:
+      columns:
+        - GAME_PLATFORM_ID
+    dimensions:
+      - name: EXCLUSIVE_END
+        expr: EXCLUSIVE_END
+        data_type: DATE
+        access_modifier: public_access
+      - name: EXCLUSIVITY_TYPE
+        expr: EXCLUSIVITY_TYPE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: IS_EXCLUSIVE
+        expr: IS_EXCLUSIVE
+        data_type: VARCHAR(1)
+        access_modifier: public_access
+    metrics:
+      - name: GAME_PLATFORM_COUNT
+        expr: COUNT(sales_game_platforms.GAME_PLATFORM_ID)
+        access_modifier: public_access
+  - name: SALES_PLATFORMS
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: PLATFORMS
+    primary_key:
+      columns:
+        - PLATFORM_ID
+    dimensions:
+      - name: PLATFORM_CODE
+        expr: PLATFORM_CODE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: PLATFORM_ID
+        expr: PLATFORM_ID
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: PLATFORM_NAME
+        expr: PLATFORM_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+  - name: SUBSCRIPTION_CHARGES
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: SUBSCRIPTION_CHARGES
+    primary_key:
+      columns:
+        - CHARGE_ID
+    dimensions:
+      - name: CHARGE_DATE
+        expr: CHARGE_TIMESTAMP::DATE
+        data_type: DATE
+        access_modifier: public_access
+    facts:
+      - name: SUB_GROSS_REVENUE_AMT
+        expr: GROSS_REVENUE
+        data_type: FLOAT
+        access_modifier: public_access
+    metrics:
+      - name: SUBSCRIPTION_GROSS_REVENUE
+        expr: SUM(subscription_charges.sub_gross_revenue_amt)
+        access_modifier: public_access
+  - name: SUBSCRIPTION_PLANS
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: SUBSCRIPTION_PLANS
+    primary_key:
+      columns:
+        - PLAN_ID
+    dimensions:
+      - name: PLAN_NAME
+        expr: PLAN_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: PLAN_TIER
+        expr: PLAN_TIER
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+  - name: TITLES
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: TITLES
+    primary_key:
+      columns:
+        - TITLE_ID
+    dimensions:
+      - name: CATALOG_GAME_ID
+        expr: CATALOG_GAME_ID
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: PUBLISHER_LABEL
+        expr: PUBLISHER_LABEL
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+        synonyms:
+          - publisher
+          - Sony Interactive Entertainment
+          - Sony
+          - SIE
+        description: Publisher abbreviation. SIE = Sony Interactive Entertainment, the publisher of every title in this data.
+        sample_values:
+          - SIE
+      - name: RELEASE_DATE
+        expr: RELEASE_DATE
+        data_type: VARCHAR(8)
+        access_modifier: public_access
+        description: Release date stored as a YYYYMMDD string. Use RELEASE_DATE_PARSED for any date math or filtering.
+      - name: STUDIO
+        expr: STUDIO
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: TITLE_ID
+        expr: TITLE_ID
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: TITLE_NAME
+        expr: TITLE_NAME
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: RELEASE_DATE_PARSED
+        description: Title release date as a DATE, parsed from the RELEASE_DATE YYYYMMDD string. Use this for date math such as months since release (0 = launch month).
+        expr: TO_DATE(RELEASE_DATE, 'YYYYMMDD')
+        data_type: DATE
+    metrics:
+      - name: TITLE_COUNT
+        expr: COUNT(titles.TITLE_ID)
+        access_modifier: public_access
+  - name: TITLE_CODE_XREF
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: TITLE_CODE_XREF
+    primary_key:
+      columns:
+        - TITLE_CODE
+    dimensions:
+      - name: CATALOG_GAME_ID
+        expr: CATALOG_GAME_ID
+        data_type: NUMBER(38,0)
+        access_modifier: public_access
+      - name: PLATFORM_CODE
+        expr: PLATFORM_CODE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+      - name: TITLE_CODE
+        expr: TITLE_CODE
+        data_type: VARCHAR(16777216)
+        access_modifier: public_access
+  - name: MONTHLY_REVENUE
+    description: 'Monthly digital game revenue: one row per TITLE_ID, REVENUE_MONTH and REVENUE_SOURCE (monetization type). This is the same revenue as DIGITAL_TRANSACTIONS pre-aggregated by month (totals match exactly); never add the two together.'
+    base_table:
+      database: CORTEX_SENSE_DEMO
+      schema: GAME_SALES
+      table: MONTHLY_REVENUE
+    primary_key:
+      columns:
+        - TITLE_ID
+        - REVENUE_MONTH
+        - REVENUE_SOURCE
+    dimensions:
+      - name: TITLE_ID
+        expr: TITLE_ID
+        data_type: NUMBER(38,0)
+      - name: REVENUE_SOURCE
+        description: 'Monetization type of the revenue (BASE_GAME_DIGITAL, BASE_GAME_PHYSICAL, DLC, COSMETIC_MICROTRANSACTION, LOOT_BOX, CONSUMABLE_MICROTRANSACTION, BATTLE_PASS, VIRTUAL_CURRENCY). Not a lifecycle phase: there are no launch, ongoing, dlc_bump, seasonal or tail values. Derive phases from months since TITLES.RELEASE_DATE_PARSED.'
+        expr: REVENUE_SOURCE
+        data_type: VARCHAR
+        sample_values:
+          - BASE_GAME_DIGITAL
+          - BASE_GAME_PHYSICAL
+          - DLC
+          - COSMETIC_MICROTRANSACTION
+          - LOOT_BOX
+          - CONSUMABLE_MICROTRANSACTION
+          - BATTLE_PASS
+          - VIRTUAL_CURRENCY
+      - name: REVENUE_MONTH
+        description: First day of the revenue month.
+        expr: REVENUE_MONTH
+        data_type: DATE
+    facts:
+      - name: MONTHLY_INCOME_AMT
+        description: Gross digital revenue for the title, month and monetization type.
+        expr: MONTHLY_INCOME
+        data_type: FLOAT
+    metrics:
+      - name: TOTAL_MONTHLY_INCOME
+        description: Total gross digital game revenue from MONTHLY_REVENUE.
+        expr: SUM(monthly_revenue.monthly_income_amt)
+relationships:
+  - name: PRODUCT_TITLE
+    left_table: DIGITAL_PRODUCTS
+    right_table: TITLES
+    relationship_columns:
+      - left_column: TITLE_ID
+        right_column: TITLE_ID
+  - name: PRODUCT_TYPE
+    left_table: DIGITAL_PRODUCTS
+    right_table: REVENUE_TYPES
+    relationship_columns:
+      - left_column: CATEGORY_ID
+        right_column: CATEGORY_ID
+  - name: TXN_CUSTOMER
+    left_table: DIGITAL_TRANSACTIONS
+    right_table: CUSTOMERS
+    relationship_columns:
+      - left_column: PLAYER_ID
+        right_column: CUSTOMER_ID
+  - name: TXN_PLATFORM
+    left_table: DIGITAL_TRANSACTIONS
+    right_table: SALES_PLATFORMS
+    relationship_columns:
+      - left_column: PLATFORM_ID
+        right_column: PLATFORM_ID
+  - name: TXN_PRODUCT
+    left_table: DIGITAL_TRANSACTIONS
+    right_table: DIGITAL_PRODUCTS
+    relationship_columns:
+      - left_column: DIGITAL_PRODUCT_ID
+        right_column: DIGITAL_PRODUCT_ID
+  - name: HW_CUSTOMER
+    left_table: HARDWARE_SALES
+    right_table: CUSTOMERS
+    relationship_columns:
+      - left_column: BUYER_ID
+        right_column: CUSTOMER_ID
+  - name: HW_PRODUCT
+    left_table: HARDWARE_SALES
+    right_table: HARDWARE_PRODUCTS
+    relationship_columns:
+      - left_column: HARDWARE_PRODUCT_ID
+        right_column: HARDWARE_PRODUCT_ID
+  - name: SGP_PLATFORM
+    left_table: SALES_GAME_PLATFORMS
+    right_table: SALES_PLATFORMS
+    relationship_columns:
+      - left_column: PLATFORM_ID
+        right_column: PLATFORM_ID
+  - name: SGP_TITLE
+    left_table: SALES_GAME_PLATFORMS
+    right_table: TITLES
+    relationship_columns:
+      - left_column: TITLE_ID
+        right_column: TITLE_ID
+  - name: SUB_CUSTOMER
+    left_table: SUBSCRIPTION_CHARGES
+    right_table: CUSTOMERS
+    relationship_columns:
+      - left_column: SUBSCRIBER_ID
+        right_column: CUSTOMER_ID
+  - name: SUB_PLAN
+    left_table: SUBSCRIPTION_CHARGES
+    right_table: SUBSCRIPTION_PLANS
+    relationship_columns:
+      - left_column: PLAN_ID
+        right_column: PLAN_ID
+  - name: XREF_TITLE
+    left_table: TITLE_CODE_XREF
+    right_table: TITLES
+    relationship_columns:
+      - left_column: TITLE_ID
+        right_column: TITLE_ID
+  - name: MONTHLY_TITLE
+    left_table: MONTHLY_REVENUE
+    right_table: TITLES
+    join_type: left_outer
+    relationship_columns:
+      - left_column: TITLE_ID
+        right_column: TITLE_ID
+verified_queries:
+  - name: What is digital revenue by title?
+    question: What is digital revenue by title?
+    sql: SELECT t.title_name, SUM(d.gross_revenue_amt) AS gross_revenue, SUM(d.net_developer_revenue_amt) AS net_developer_revenue FROM digital_transactions AS d JOIN digital_products AS p ON p.digital_product_id = d.digital_product_id JOIN titles AS t ON t.title_id = p.title_id GROUP BY t.title_name ORDER BY gross_revenue DESC NULLS LAST
+    verified_at: 1792706574
+    use_as_onboarding_question: true
+  - name: What is digital revenue by title code?
+    question: What is digital revenue by title code?
+    sql: SELECT x.title_code, t.title_name, sp.platform_name, SUM(d.gross_revenue_amt) AS gross_revenue, SUM(d.net_developer_revenue_amt) AS net_developer_revenue FROM digital_transactions AS d JOIN digital_products AS p ON p.digital_product_id = d.digital_product_id JOIN sales_platforms AS sp ON sp.platform_id = d.platform_id JOIN title_code_xref AS x ON x.title_id = p.title_id AND x.platform_code = sp.platform_code JOIN titles AS t ON t.title_id = p.title_id GROUP BY x.title_code, t.title_name, sp.platform_name ORDER BY gross_revenue DESC NULLS LAST
+    verified_at: 1792706574
+  - name: What is digital revenue by monetization type?
+    question: What is digital revenue by monetization type?
+    sql: SELECT rt.monetization_type, SUM(d.gross_revenue_amt) AS gross_revenue, SUM(d.net_developer_revenue_amt) AS net_developer_revenue, COUNT(d.transaction_id) AS transactions FROM digital_transactions AS d JOIN digital_products AS p ON p.digital_product_id = d.digital_product_id JOIN revenue_types AS rt ON rt.category_id = p.category_id GROUP BY rt.monetization_type ORDER BY gross_revenue DESC NULLS LAST
+    verified_at: 1792706574
+  - name: What is total spend per customer across digital, hardware and subscriptions?
+    question: What is total spend per customer across digital, hardware and subscriptions?
+    sql: WITH dg AS (SELECT player_id AS customer_id, SUM(gross_revenue_amt) AS digital_spend FROM digital_transactions GROUP BY player_id), hw AS (SELECT buyer_id AS customer_id, SUM(hw_gross_revenue_amt) AS hardware_spend FROM hardware_sales GROUP BY buyer_id), sb AS (SELECT subscriber_id AS customer_id, SUM(sub_gross_revenue_amt) AS subscription_spend FROM subscription_charges GROUP BY subscriber_id) SELECT c.customer_id, c.region, COALESCE(dg.digital_spend, 0) AS digital_spend, COALESCE(hw.hardware_spend, 0) AS hardware_spend, COALESCE(sb.subscription_spend, 0) AS subscription_spend, COALESCE(dg.digital_spend, 0) + COALESCE(hw.hardware_spend, 0) + COALESCE(sb.subscription_spend, 0) AS total_spend FROM customers AS c LEFT JOIN dg ON dg.customer_id = c.customer_id LEFT JOIN hw ON hw.customer_id = c.customer_id LEFT JOIN sb ON sb.customer_id = c.customer_id ORDER BY total_spend DESC NULLS LAST
+    verified_at: 1792706574
+  - name: What is total company revenue by revenue stream?
+    question: What is total company revenue by revenue stream?
+    sql: SELECT revenue_stream, gross_revenue, gross_revenue / SUM(gross_revenue) OVER () AS share_of_total FROM (SELECT 'Hardware' AS revenue_stream, SUM(hw_gross_revenue_amt) AS gross_revenue FROM hardware_sales UNION ALL SELECT 'Subscriptions' AS revenue_stream, SUM(sub_gross_revenue_amt) AS gross_revenue FROM subscription_charges UNION ALL SELECT 'Digital game sales' AS revenue_stream, SUM(gross_revenue_amt) AS gross_revenue FROM digital_transactions) AS streams ORDER BY gross_revenue DESC NULLS LAST
+    verified_at: 1792718899
+  - name: What is digital revenue in the launch month, early life and tail?
+    question: What is digital revenue in the launch month, early life and tail?
+    sql: SELECT CASE WHEN DATEDIFF(MONTH, DATE_TRUNC('MONTH', t.release_date_parsed), m.revenue_month) = 0 THEN 'Launch month' WHEN DATEDIFF(MONTH, DATE_TRUNC('MONTH', t.release_date_parsed), m.revenue_month) BETWEEN 1 AND 5 THEN 'Early life (months 1-5)' ELSE 'Tail (month 6+)' END AS lifecycle_phase, SUM(m.monthly_income_amt) AS revenue, COUNT(DISTINCT m.title_id) AS titles FROM monthly_revenue AS m JOIN titles AS t ON t.title_id = m.title_id GROUP BY 1 ORDER BY MIN(DATEDIFF(MONTH, DATE_TRUNC('MONTH', t.release_date_parsed), m.revenue_month))
+    verified_at: 1792720150
+module_custom_instructions:
+  sql_generation: 'Digital revenue: get the title of a digital transaction through its product (DIGITAL_TRANSACTIONS -> DIGITAL_PRODUCTS -> TITLES via PRODUCT_TITLE). There is no direct transaction-to-title relationship. DIGITAL_TRANSACTIONS.TITLE_ID is NULL for about 10% of revenue, while DIGITAL_PRODUCTS.TITLE_ID is always populated and agrees wherever both exist. TITLE_CODE_XREF has one row per title and platform and only contains PlayStation codes: never join it to revenue on TITLE_ID alone; join on both title and platform (via SALES_PLATFORMS.PLATFORM_CODE). Revenue by title code covers only PlayStation sales and must not be used as total revenue. When combining digital, hardware and subscription revenue per customer, aggregate each fact table separately before joining to CUSTOMERS. MONTHLY_REVENUE is the same digital game revenue as DIGITAL_TRANSACTIONS (it totals the same). Use it for monthly trends and lifecycle phases, but never add it to DIGITAL_TRANSACTIONS revenue or include both in total company revenue. Its REVENUE_SOURCE is the monetization type, not a lifecycle phase; derive launch, early-life and tail phases from months since TITLES.RELEASE_DATE_PARSED (0 = launch month, 1-5 = early life, 6+ = tail). Total company revenue is hardware + subscription + digital gross revenue, each summed separately.'

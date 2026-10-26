@@ -1,0 +1,9 @@
+create or replace TABLE CORTEX_SENSE_DEMO.GAME_SALES.REVENUE_TYPES (
+	CATEGORY_ID NUMBER(38,0) NOT NULL autoincrement start 1 increment 1 noorder,
+	MONETIZATION_TYPE VARCHAR(16777216) NOT NULL,
+	CATEGORY_GROUP VARCHAR(16777216) NOT NULL,
+	DESCRIPTION VARCHAR(16777216),
+	unique (MONETIZATION_TYPE),
+	primary key (CATEGORY_ID)
+)COMMENT='Commerce taxonomy for every way the platform earns revenue. CATEGORY_GROUP rolls categories up to HARDWARE, DIGITAL, or SUBSCRIPTION.'
+;

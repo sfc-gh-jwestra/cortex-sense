@@ -1,0 +1,7 @@
+version: 1
+artifacts:
+  - path: ../semantic_views/SV_GAME_SALES.yaml
+    type: semantic_view
+    targets:
+      default:
+        object: CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES

@@ -1,0 +1,22 @@
+[server]
+enableStaticServing = true
+
+[theme]
+primaryColor = "#29B5E8"
+textColor = "#11567F"
+font = "Inter"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/Inter-Regular.ttf"
+weight = 400
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/Inter-SemiBold.ttf"
+weight = 600
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/Inter-Bold.ttf"
+weight = 700

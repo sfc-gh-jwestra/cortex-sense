@@ -1,0 +1,224 @@
+# Demo question bank (CORTEX_SENSE_DEMO), run against three agents in CORTEX_SENSE_DEMO.AGENTS:
+# GAME_AGENT_FINANCE (semantic view only), GAME_AGENT_ANALYST (semantic view + own SQL, no Cortex Sense)
+# and GAME_AGENT_SENSE (Cortex Sense).
+#
+# 10 questions: 2 ties + 8 Sense-only, each Sense-only question on a different concept.
+# bucket:
+#   tie         - answerable from SV_GAME_SALES; every agent should answer correctly
+#   sense_only  - needs catalog tables, rules or documents outside SV_GAME_SALES. The analyst can reach the
+#                 tables but not the rules or documents; only Cortex Sense has all three.
+# concept: the long-tail concept the question demonstrates
+# knowledge_doc: stage file in @CORTEX_SENSE_DEMO.CONTEXTS.KNOWLEDGE_BASE the answer depends on (optional)
+# ground_truth / gt_sql: computed on CORTEX_SENSE_DEMO with SQL that follows scripts/record_feedback.py
+#   (sales -> catalog only via SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM GAME_SALES.TITLE_CODE_XREF).
+#
+# Generate the dataset SQL: python3 scripts/generate_install_sql.py  (writes install/10-load-eval-dataset.sql).
+# A dataset can't be overwritten: after editing questions or ground truth, bump the dataset_name suffix
+# in the three *_demo_eval.yaml configs first.
+
+questions:
+# ---------------- tie ----------------
+- id: T01
+  bucket: tie
+  concept: revenue
+  question: What are the top 10 games by lifetime revenue?
+  tables: [GAME_REVENUE, TITLES]
+  ground_truth: >-
+    Top 10 titles by lifetime digital revenue: Horizon Zero Dawn ~$1.46M, Marvel's Spider-Man
+    ~$1.38M, God of War (2018) ~$1.38M, Spider-Man 2 ~$954K, GT7 ~$900K, God of War Ragnarok
+    ~$900K, Ghost of Tsushima ~$780K, Gran Turismo Sport ~$764K, Helldivers 2 ~$700K, Gran
+    Turismo 5 ~$690K. Values within +/-3% are acceptable; the order of the near-tied Spider-Man
+    and God of War (2018), and of GT7 and God of War Ragnarok, may swap.
+  gt_sql: |-
+    SELECT t.TITLE_NAME, r.INCOME
+    FROM CORTEX_SENSE_DEMO.GAME_SALES.GAME_REVENUE r
+    JOIN CORTEX_SENSE_DEMO.GAME_SALES.TITLES t ON t.TITLE_ID = r.TITLE_ID
+    ORDER BY r.INCOME DESC LIMIT 10
+- id: T02
+  bucket: tie
+  concept: portfolio revenue
+  question: What is our total lifetime portfolio revenue by franchise?
+  tables: [GAME_REVENUE, TITLE_CODE_XREF, GAMES]
+  ground_truth: >-
+    Total lifetime digital revenue is ~$19.23M. Top franchises: God of War ~$3.43M (7 titles),
+    Marvel's Spider-Man ~$2.99M (3), Gran Turismo ~$2.65M (4), Horizon ~$2.14M (5), MLB The Show
+    ~$1.20M (10), The Last of Us ~$1.10M (3), Ghost of Tsushima ~$780K (1), Helldivers ~$700K (1).
+    About $230K belongs to two titles with no catalog franchise mapping. Values within +/-3% are
+    acceptable.
+  gt_sql: |-
+    WITH title_map AS (SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM CORTEX_SENSE_DEMO.GAME_SALES.TITLE_CODE_XREF)
+    SELECT COALESCE(g.FRANCHISE_NAME, 'Unmapped') franchise, SUM(r.INCOME) income, COUNT(*) titles
+    FROM CORTEX_SENSE_DEMO.GAME_SALES.GAME_REVENUE r
+    LEFT JOIN title_map x ON x.TITLE_ID = r.TITLE_ID
+    LEFT JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAMES g ON g.GAME_ID = x.CATALOG_GAME_ID
+    GROUP BY 1 ORDER BY 2 DESC
+
+# ---------------- sense_only ----------------
+- id: S01
+  bucket: sense_only
+  concept: genre
+  question: What are the top 5 genres by lifetime revenue?
+  tables: [GAME_GENRE_CLASSIFICATION, GAME_REVENUE, TITLE_CODE_XREF]
+  ground_truth: >-
+    Using full genre classification matches (a game can match several genres, so totals overlap
+    and must not be read as shares of total revenue), the top 5 genres by lifetime revenue are:
+    ActionRPG ~$13.24M (42 games), DynamicAdventure ~$12.43M (33), Shooter ~$6.40M (27), TPS
+    ~$6.20M (18), Gore ~$6.08M (11). Values within +/-3% are acceptable. The response must give
+    genre-level revenue, not franchise or publisher revenue.
+  gt_sql: |-
+    WITH title_map AS (SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM CORTEX_SENSE_DEMO.GAME_SALES.TITLE_CODE_XREF)
+    SELECT c.GENRE, SUM(r.INCOME) rev, COUNT(DISTINCT c.GAME_ID) games
+    FROM CORTEX_SENSE_DEMO.GAME_SALES.GAME_REVENUE r
+    JOIN title_map x ON x.TITLE_ID = r.TITLE_ID
+    JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAME_GENRE_CLASSIFICATION c
+      ON c.GAME_ID = x.CATALOG_GAME_ID AND c.MATCH_STATUS = 'FULL'
+    GROUP BY 1 ORDER BY 2 DESC LIMIT 5
+- id: S02
+  bucket: sense_only
+  concept: awards
+  question: How does lifetime revenue of award-winning games compare with games that never won an award?
+  tables: [GAME_AWARDS, GAME_REVENUE, TITLE_CODE_XREF]
+  ground_truth: >-
+    9 award-winning games (at least one win, nominations excluded) earned ~$6.64M total, an
+    average of ~$738K per game. The 76 games that never won earned ~$12.36M total, an average of
+    ~$163K per game. Award winners average roughly 4.5x more lifetime revenue per game. About
+    $230K from two titles with no catalog mapping is excluded or reported separately. Values
+    within +/-3% are acceptable. The never-won group may be split into sub-groups (for example
+    nominated-only, about 8 games and ~$4.79M, and no award recognition, about 68 games and
+    ~$7.57M) without stating the combined figure, as long as the sub-groups add up to about 76
+    games and ~$12.36M. Treat such a split as fully correct.
+  gt_sql: |-
+    WITH title_map AS (SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM CORTEX_SENSE_DEMO.GAME_SALES.TITLE_CODE_XREF),
+    gi AS (SELECT x.CATALOG_GAME_ID GAME_ID, SUM(r.INCOME) INCOME
+           FROM CORTEX_SENSE_DEMO.GAME_SALES.GAME_REVENUE r JOIN title_map x ON x.TITLE_ID = r.TITLE_ID GROUP BY 1),
+    w AS (SELECT DISTINCT GAME_ID FROM CORTEX_SENSE_DEMO.GAME_CATALOG.GAME_AWARDS WHERE WON_OR_NOMINATED = 'won')
+    SELECT IFF(w.GAME_ID IS NULL, 'never won', 'award winner') grp, COUNT(*) games,
+           SUM(gi.INCOME) total, AVG(gi.INCOME) avg_rev
+    FROM gi LEFT JOIN w ON w.GAME_ID = gi.GAME_ID
+    GROUP BY 1
+- id: S03
+  bucket: sense_only
+  concept: monetization
+  question: What is the total lifetime revenue by monetization model?
+  tables: [GAME_MONETIZATION, MONETIZATION_TYPES, GAME_REVENUE]
+  ground_truth: >-
+    Lifetime revenue of titles using each monetization model (titles can use several models, so
+    totals overlap): premium ~$19.23M (87 titles), dlc ~$7.25M (11), microtransactions ~$3.64M
+    (16), loot_boxes ~$1.20M (10), battle_pass ~$760K (2), subscription ~$4K (1). Values within
+    +/-3% are acceptable. The response should note that models overlap.
+  gt_sql: |-
+    SELECT t.MONETIZATION_NAME, COUNT(*) titles, SUM(r.INCOME) rev
+    FROM CORTEX_SENSE_DEMO.GAME_SALES.GAME_MONETIZATION gm
+    JOIN CORTEX_SENSE_DEMO.GAME_SALES.MONETIZATION_TYPES t ON gm.MONETIZATION_ID = t.MONETIZATION_ID
+    JOIN CORTEX_SENSE_DEMO.GAME_SALES.GAME_REVENUE r ON gm.TITLE_ID = r.TITLE_ID
+    GROUP BY 1 ORDER BY 3 DESC
+- id: S04
+  bucket: sense_only
+  concept: engines
+  question: Which game engines power the most lifetime revenue? Show the top 5.
+  tables: [GAME_ENGINES, ENGINES, GAME_REVENUE, TITLE_CODE_XREF]
+  ground_truth: >-
+    Top 5 engines by lifetime revenue of the games built on them: Santa_Monica_Engine ~$3.42M
+    (6 games), Insomniac_Engine ~$3.36M (5), Polyphony_Engine ~$2.65M (4), Decima ~$2.53M (5),
+    Naughty_Dog_Engine ~$1.41M (4). Values within +/-3% are acceptable.
+  gt_sql: |-
+    WITH title_map AS (SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM CORTEX_SENSE_DEMO.GAME_SALES.TITLE_CODE_XREF)
+    SELECT e.ENGINE_NAME, COUNT(DISTINCT ge.GAME_ID) games, SUM(r.INCOME) rev
+    FROM CORTEX_SENSE_DEMO.GAME_SALES.GAME_REVENUE r
+    JOIN title_map x ON x.TITLE_ID = r.TITLE_ID
+    JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAME_ENGINES ge ON ge.GAME_ID = x.CATALOG_GAME_ID
+    JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.ENGINES e ON ge.ENGINE_ID = e.ENGINE_ID
+    GROUP BY 1 ORDER BY 3 DESC LIMIT 5
+- id: S05
+  bucket: sense_only
+  concept: accessibility
+  question: Which of the top 5 highest-revenue games have the fewest accessibility features, and how many are they missing?
+  tables: [VW_ACCESSIBILITY_GAPS, GAME_REVENUE, TITLE_CODE_XREF]
+  ground_truth: >-
+    Of the 10 tracked accessibility features, among the top 5 revenue games: GT7 and Horizon
+    Zero Dawn are each missing 7 (fewest features), God of War (2018) is missing 6, and Marvel's
+    Spider-Man and Spider-Man 2 are each missing 4. Counts must match exactly.
+  gt_sql: |-
+    WITH title_map AS (SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM CORTEX_SENSE_DEMO.GAME_SALES.TITLE_CODE_XREF),
+    top5 AS (SELECT TITLE_ID, INCOME FROM CORTEX_SENSE_DEMO.GAME_SALES.GAME_REVENUE ORDER BY INCOME DESC LIMIT 5)
+    SELECT t.TITLE_NAME, COUNT_IF(NOT ag.IS_SUPPORTED) missing, COUNT(ag.FEATURE_ID) tracked
+    FROM top5
+    JOIN CORTEX_SENSE_DEMO.GAME_SALES.TITLES t ON t.TITLE_ID = top5.TITLE_ID
+    LEFT JOIN title_map x ON x.TITLE_ID = top5.TITLE_ID
+    LEFT JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.VW_ACCESSIBILITY_GAPS ag ON ag.GAME_ID = x.CATALOG_GAME_ID
+    GROUP BY 1 ORDER BY 2 DESC
+- id: S06
+  bucket: sense_only
+  concept: genre whitespace
+  question: How many genre combinations are whitespace, underserved, or served in the market?
+  tables: [GENRE_WHITESPACE_ANALYSIS]
+  ground_truth: >-
+    Of the logically valid genre combinations: 536 are WHITESPACE (no games), 7 are UNDERSERVED
+    (1 to 2 games) and 16 are SERVED. Counts must match exactly. The response may note that
+    whitespace measures low supply, not proven demand.
+  gt_sql: |-
+    SELECT MARKET_STATUS, COUNT(*) combos
+    FROM CORTEX_SENSE_DEMO.GAME_CATALOG.GENRE_WHITESPACE_ANALYSIS
+    GROUP BY 1 ORDER BY 2 DESC
+- id: S07
+  bucket: sense_only
+  concept: portfolio strategy and cannibalization
+  knowledge_doc: sony_portfolio_strategy_fy2027.md
+  question: Under our FY2027 portfolio strategy, which Growth franchise has a HIGH audience overlap with a Core franchise, and what should we do about it?
+  tables: [GAME_SIMILARITY_SCORES, GAMES]
+  ground_truth: >-
+    Per the FY2027 strategy memo, Marvel's Spider-Man is a Growth franchise and God of War is a
+    Core franchise. Their games have HIGH audience overlap: God of War (2018) / Marvel's
+    Spider-Man ~0.71, God of War Ragnarok / Marvel's Spider-Man: Miles Morales ~0.71, God of War
+    Ragnarok / Marvel's Spider-Man ~0.62, and God of War (2018) / Miles Morales ~0.62. Under
+    strategic priority 1 (reduce internal cannibalization) the Growth franchise, Spider-Man, must
+    reposition (differentiate its audience and positioning, avoid God of War launch windows)
+    while God of War, the Core franchise, keeps its course. Mentioning the Spider-Man / Bloodborne
+    HIGH pair (~0.72) is acceptable but it is Growth vs Growth, not a Core threat. Overlap values
+    within +/-0.02 are acceptable.
+  gt_sql: |-
+    SELECT ga.FRANCHISE_NAME, s.GAME_A_NAME, gb.FRANCHISE_NAME, s.GAME_B_NAME, s.WEIGHTED_OVERLAP, s.OVERLAP_TIER
+    FROM CORTEX_SENSE_DEMO.GAME_CATALOG.GAME_SIMILARITY_SCORES s
+    JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAMES ga ON ga.GAME_ID = s.GAME_A_ID
+    JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAMES gb ON gb.GAME_ID = s.GAME_B_ID
+    WHERE s.OVERLAP_TIER = 'HIGH'
+      AND ARRAY_SIZE(ARRAY_INTERSECTION(ARRAY_CONSTRUCT(ga.FRANCHISE_NAME, gb.FRANCHISE_NAME),
+                                        ARRAY_CONSTRUCT('God of War', 'Marvel''s Spider-Man'))) = 2
+    ORDER BY s.WEIGHTED_OVERLAP DESC
+- id: S08
+  bucket: sense_only
+  concept: EU regulatory risk (live-service, age ratings)
+  knowledge_doc: eu_regulatory_brief_loot_boxes.md
+  question: Under our EU loot box regulatory brief, which of our live-service games carry EU regulatory risk, what tier is each, and what mitigations are required?
+  tables: [GAME_MODES, GAME_MONETIZATION, MONETIZATION_TYPES, GAME_RATINGS, AGE_RATINGS, GAME_PLATFORMS, PLATFORMS]
+  ground_truth: >-
+    Sixteen games are live-service (online required plus recurring monetization). HIGH:
+    Helldivers 2, because it is rated PEGI 18 (PEGI; a PEGI 18 rating combined with monetization
+    draws regulator and media attention). Required HIGH mitigations: legal review before any EU
+    content update, disable paid random rewards in Belgium, and publish drop rates. No live-
+    service game meets the loot-box-on-mobile condition: MLB The Show 17 through 26 use loot
+    boxes but none is on Android or Apple. ELEVATED (live-service and rated below PEGI 18, so
+    minors are in the audience): Destruction AllStars (PEGI 12), Gran Turismo 7 and Gran Turismo
+    Sport (PEGI 3), and MLB The Show 17 through 26 (PEGI 3). This exposure relates to the EU
+    Digital Services Act and EU consumer protection rules on virtual-currency pricing; the MLB
+    The Show titles also carry loot boxes, which Belgium treats as gambling and the Netherlands
+    scrutinizes. Required ELEVATED mitigations: show real-money prices next to virtual currency,
+    turn on spending limits and parental controls by default, avoid time-limited pressure offers
+    aimed at under-18 accounts, and review annually. Firewall Zero Hour and Marathon are live-
+    service but have no PEGI rating in the data, so they are not HIGH and their ELEVATED status
+    cannot be confirmed; the answer should flag this gap. The answer should note the brief is a
+    simplified internal summary, not legal advice.
+  gt_sql: |-
+    WITH live AS (
+      SELECT DISTINCT gm.GAME_ID FROM CORTEX_SENSE_DEMO.GAME_CATALOG.GAME_MODES gm
+      JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAME_MONETIZATION gmo ON gmo.GAME_ID = gm.GAME_ID
+      JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.MONETIZATION_TYPES mt ON mt.MONETIZATION_ID = gmo.MONETIZATION_ID
+      WHERE gm.ONLINE_REQUIRED
+        AND mt.MONETIZATION_NAME IN ('battle_pass', 'microtransactions', 'subscription', 'loot_boxes'))
+    SELECT g.GAME_NAME, a.RATING_VALUE AS PEGI
+    FROM live
+    JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAMES g ON g.GAME_ID = live.GAME_ID
+    LEFT JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.GAME_RATINGS gr ON gr.GAME_ID = g.GAME_ID
+    LEFT JOIN CORTEX_SENSE_DEMO.GAME_CATALOG.AGE_RATINGS a ON a.RATING_ID = gr.RATING_ID AND a.RATING_SYSTEM = 'PEGI'
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY g.GAME_ID ORDER BY a.RATING_VALUE NULLS LAST) = 1
+    ORDER BY 1

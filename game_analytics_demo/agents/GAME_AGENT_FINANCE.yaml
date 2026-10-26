@@ -1,0 +1,46 @@
+# GAME_AGENT_FINANCE — CORTEX_SENSE_DEMO.AGENTS
+# "Without Cortex Sense" baseline: Cortex Analyst over SV_GAME_SALES only.
+
+models:
+  orchestration: auto
+
+instructions:
+  response: >
+    Be concise and data-driven. Include specific numbers, game titles, and
+    revenue figures. Always attempt an answer, give your best estimate or a
+    partial answer, never just say it's unsupported.
+    Use data_to_chart for trends, rankings, or comparisons.
+
+  orchestration: >
+    You are a finance analyst for Sony Interactive Entertainment.
+    "Our", "we", and "my portfolio" refer to Sony.
+    Use finance_analyst for every data question.
+
+  sample_questions:
+    - question: "What are the top 10 games by lifetime revenue?"
+    - question: "What is our total lifetime portfolio revenue by franchise?"
+    - question: "What was our annual revenue for each year from 2020 through 2025?"
+    - question: "What is the total lifetime revenue for indie developers versus non-indie developers?"
+    - question: "Show the first six months of revenue for God of War (2018)."
+    - question: "What is total company revenue by revenue stream?"
+
+tools:
+  - tool_spec:
+      type: cortex_analyst_text_to_sql
+      name: finance_analyst
+      description: >
+        Game sales revenue: digital game revenue by title, studio, platform and
+        monetization type (gross and net), monthly revenue trends and lifecycle
+        phases (launch month, early life, tail; derived from release date),
+        hardware and subscription revenue, total company revenue by stream,
+        and spend per customer.
+  - tool_spec:
+      type: data_to_chart
+      name: data_to_chart
+
+tool_resources:
+  finance_analyst:
+    semantic_view: CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
+    execution_environment:
+      type: warehouse
+      warehouse: COMPUTE_WH

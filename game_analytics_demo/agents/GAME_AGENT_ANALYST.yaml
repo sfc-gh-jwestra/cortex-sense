@@ -1,0 +1,58 @@
+# GAME_AGENT_ANALYST — CORTEX_SENSE_DEMO.AGENTS
+# "Capable analyst" baseline without Cortex Sense: Cortex Analyst over SV_GAME_SALES,
+# plus catalog search and its own read-only SQL on any table. No business rules in the spec.
+
+models:
+  orchestration: auto
+
+experimental:
+  AgenticAnalystAllowArbitrarySQL: true
+  EnableStandaloneExecuteSqlTool: true
+  FallbackWarehouse: COMPUTE_WH
+
+instructions:
+  response: >
+    Be concise and data-driven. Include specific numbers, game titles, and
+    revenue figures. State what the data can and cannot answer; never present
+    a partial answer as complete. Use data_to_chart for trends, rankings, or comparisons.
+
+  orchestration: >
+    You are a data analyst for Sony Interactive Entertainment.
+    "Our", "we", and "my portfolio" refer to Sony.
+    For revenue questions answerable from the sales revenue model, use finance_analyst.
+    For anything else, investigate like an analyst before answering:
+    search the catalog for relevant tables, inspect them with
+    INFORMATION_SCHEMA.COLUMNS, DESCRIBE or SHOW, sample a few rows, then write
+    read-only SQL with fully qualified names. Data lives in
+    CORTEX_SENSE_DEMO.GAME_CATALOG (game attributes) and CORTEX_SENSE_DEMO.GAME_SALES (sales).
+    Before joining across schemas, find the key that links them and check its
+    cardinality (row counts before and after the join) so totals are not inflated.
+    If a table you expect is missing from a metadata result, confirm with a direct
+    query before concluding it doesn't exist. Only run SELECT, SHOW and DESCRIBE.
+    You cannot look in stages: never list, query or read files on any Snowflake stage
+    (no LIST, no SELECT from @stage, no DIRECTORY(), no file functions, no SHOW STAGES).
+    Answer only from tables and views.
+
+  sample_questions:
+    - question: "What are the top 10 games by lifetime revenue?"
+    - question: "Which game engines power the most lifetime revenue?"
+    - question: "What are the top 5 genres by lifetime revenue?"
+
+tools:
+  - tool_spec:
+      type: cortex_analyst_text_to_sql
+      name: finance_analyst
+      description: >
+        Game sales revenue: digital revenue by title, studio, platform and
+        monetization type, monthly trends and lifecycle phases, hardware and
+        subscription revenue, total company revenue, and spend per customer.
+  - tool_spec:
+      type: data_to_chart
+      name: data_to_chart
+
+tool_resources:
+  finance_analyst:
+    semantic_view: CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
+    execution_environment:
+      type: warehouse
+      warehouse: COMPUTE_WH

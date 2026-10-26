@@ -1,0 +1,56 @@
+business_domain: GAME_ANALYTICS_DEMO_CTX
+status: active
+warehouse: COMPUTE_WH
+
+sources:
+  - name: catalog_objects
+    type: snowflake_metadata
+    enabled: true
+    rules:
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.GAME_CATALOG.*
+        user_prompt: "game catalog tables — games (with developer, publisher and franchise attributes), franchises, platforms, engines, monetization, narrative structures, studio acquisitions, genre classification, similarity, whitespace, cannibalization, accessibility, awards, age ratings, game modes, mechanics"
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.GAME_SALES.*
+        user_prompt: "game sales tables — titles, title-code xref to the catalog, digital product, hardware and subscription transactions, customer accounts, lifetime / monthly / quarterly revenue, platform exclusivity"
+
+  - name: query_history
+    type: snowflake_metadata
+    enabled: true
+    rules:
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.GAME_CATALOG.*
+        user_prompt: "queries touching game catalog tables"
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.GAME_SALES.*
+        user_prompt: "queries touching game sales tables"
+
+  - name: streamlit_apps
+    type: snowflake_content
+    enabled: true
+    rules:
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.GAME_SALES.GAME_SALES_DASHBOARD
+        user_prompt: "game sales dashboard Streamlit app — revenue by stream (digital, hardware, subscriptions), monetization type, platform commission, hardware by region and manufacturer, subscription tiers and ARPS, title leaderboard, exclusivity, customer accounts by region and platform"
+
+  - name: semantic_views
+    type: snowflake_content
+    enabled: true
+    rules:
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
+        user_prompt: "GAME_SALES-only revenue model: digital, hardware and subscription revenue; digital revenue by title and by PlayStation title code; revenue by monetization type; total spend per customer"
+
+  - name: stage_files
+    type: snowflake_content
+    enabled: true
+    rules:
+      # Mirrors the local stage_files/ folder; re-upload after editing:
+      #   snow sql -c CORTEX_SENSE_DEMO_CONN --enable-templating NONE -f install/06-upload-knowledge-base.sql
+      - type: file
+        stage: CORTEX_SENSE_DEMO.CONTEXTS.KNOWLEDGE_BASE
+        file_pattern: ""
+        user_prompt: "gaming knowledge base — internal FY2027 portfolio strategy memo (franchise core/growth/harvest tiers, strategic priorities) and EU loot box regulatory brief (EU risk tiers HIGH/ELEVATED/WATCH/LOW for live-service monetization, required mitigations, and how to assess EU risk)"
+
+# All business rules stored as feedback records via record-feedback.
+# See list-feedback for the active definitions, retrieval steers, and procedural rules.

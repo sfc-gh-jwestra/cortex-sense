@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="snowflake-source" content="cortex-agent-authored">
+<title>Architecture: three agents, with and without Cortex Sense</title>
+<script type="application/json" id="snowflake-report-metadata">
+{
+  "generated": "2026-10-23",
+  "intent": "Static architecture diagram for the demo Setup tab: what each of the three agents can reach",
+  "sections": [
+    { "id": "agents", "title": "Same question, three agents",
+      "dataSources": [
+        { "type": "file", "path": "agents/GAME_AGENT_FINANCE.yaml" },
+        { "type": "file", "path": "agents/GAME_AGENT_ANALYST.yaml" },
+        { "type": "file", "path": "agents/GAME_AGENT_SENSE.yaml" },
+        { "type": "file", "path": "context/scope.yaml" },
+        { "type": "file", "path": "scripts/record_feedback.py" }
+      ],
+      "producerNotes": "Counts (13 SV tables, 57 tables and views, 25 feedback rules) are hand-entered; update them when the semantic view, scope or rules change." }
+  ]
+}
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: clamp(12px, 3vw, 24px);
+         color: light-dark(#0f172a, #e2e8f0); background: light-dark(#ffffff, #0f172a); box-sizing: border-box; }
+  h2 { margin: 0 0 4px; font-size: 18px; }
+  p.sub { margin: 0 0 20px; color: light-dark(#64748b, #94a3b8); font-size: 13px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .col { border: 1px solid light-dark(#e2e8f0, #334155); border-radius: 12px; padding: 14px; }
+  .col.base { border-top: 4px solid #64748b; }
+  .col.analyst { border-top: 4px solid #d97706; }
+  .col.sense { border-top: 4px solid #29b5e8; }
+  .title { font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+  .box { border: 1px solid light-dark(#e2e8f0, #334155); border-radius: 8px; padding: 10px 12px;
+         background: light-dark(#f8fafc, #1e293b); font-size: 12px; }
+  .box b { display: block; font-size: 13px; margin-bottom: 2px; word-break: break-word; }
+  .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 22px; }
+  .muted { color: light-dark(#64748b, #94a3b8); }
+  .bad { color: light-dark(#b91c1c, #fca5a5); }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 999px; margin: 2px 2px 0 0;
+         background: light-dark(#e0f2fe, #0c4a6e); color: light-dark(#0369a1, #bae6fd); }
+  .tag.grey { background: light-dark(#f1f5f9, #334155); color: light-dark(#475569, #cbd5e1); }
+  .tag.amber { background: light-dark(#fef3c7, #78350f); color: light-dark(#92400e, #fde68a); }
+  .list > div { margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h2 id="agents">Same question, three agents</h2>
+  <p class="sub">All three agents query CORTEX_SENSE_DEMO.GAME_CATALOG and GAME_SALES. What differs is the tools and context each one gets.</p>
+  <div class="cols">
+    <div class="col base">
+      <div class="title">Without Cortex Sense</div>
+      <div class="box"><b>GAME_AGENT_FINANCE</b>Finance analyst. Tools: finance_analyst, data_to_chart.</div>
+      <div class="arrow">&darr;</div>
+      <div class="box"><b>Cortex Analyst</b>Text-to-SQL limited to one semantic view.</div>
+      <div class="arrow">&darr;</div>
+      <div class="box"><b>SV_GAME_SALES</b>
+        13 sales tables: titles, digital products and transactions, hardware, subscriptions, customers, platforms, monthly revenue.
+        <div><span class="tag grey">6 verified queries</span></div>
+      </div>
+      <div class="arrow">&darr;</div>
+      <div class="box muted">Genres, awards, engines, accessibility, audience overlap, monetization or company policy: declined or answered from revenue only.</div>
+    </div>
+
+    <div class="col analyst">
+      <div class="title">Capable analyst, no Cortex Sense</div>
+      <div class="box"><b>GAME_AGENT_ANALYST</b>Analyst instructions, no business rules. Tools: finance_analyst, data_to_chart, plus its own SQL.</div>
+      <div class="arrow">&darr;</div>
+      <div class="box"><b>Cortex Analyst + catalog search + SQL</b>
+        <div class="list">
+          <div><span class="tag amber">AgenticAnalystAllowArbitrarySQL</span> its own SQL on any readable table</div>
+          <div><span class="tag amber">EnableStandaloneExecuteSqlTool</span> catalog and tool search</div>
+        </div>
+      </div>
+      <div class="arrow">&darr;</div>
+      <div class="box"><b>Whatever it can discover</b>
+        SV_GAME_SALES, INFORMATION_SCHEMA and every GAME_CATALOG and GAME_SALES table it finds. No feedback rules, query history or knowledge documents.
+      </div>
+      <div class="arrow">&darr;</div>
+      <div class="box muted">Finds the long-tail tables, but has to guess the joins and definitions: <span class="bad">for example it links sales to the catalog through TITLES.CATALOG_GAME_ID, which is NULL for 13 titles</span>, and can't see the strategy memo or EU brief.</div>
+    </div>
+
+    <div class="col sense">
+      <div class="title">With Cortex Sense</div>
+      <div class="box"><b>GAME_AGENT_SENSE</b>Portfolio analyst. EnableCortexSense plus data_to_chart.</div>
+      <div class="arrow">&darr;</div>
+      <div class="box"><b>Cortex Sense retrieval</b>Finds the right tables, joins, rules and documents for each question, then writes SQL.</div>
+      <div class="arrow">&darr;</div>
+      <div class="box"><b>CONTEXTS.GAME_ANALYTICS_CTX_V2</b>
+        <div class="list">
+          <div><span class="tag">57 tables and views</span> GAME_CATALOG, GAME_SALES</div>
+          <div><span class="tag">Query history</span> rule-compliant SQL patterns</div>
+          <div><span class="tag">25 feedback rules</span> revenue mapping, genres, live service, overlap tiers, EU risk</div>
+          <div><span class="tag">Semantic view</span> SV_GAME_SALES as a document</div>
+          <div><span class="tag">Knowledge base</span> FY2027 strategy memo, EU loot box brief</div>
+          <div><span class="tag">Streamlit app</span> GAME_SALES_DASHBOARD</div>
+        </div>
+      </div>
+      <div class="arrow">&darr;</div>
+      <div class="box muted">Answers the finance and long-tail questions with the documented joins and definitions, citing the tables, rules and documents it used.</div>
+    </div>
+  </div>
+</body>
+</html>
