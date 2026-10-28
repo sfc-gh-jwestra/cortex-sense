@@ -19,3 +19,7 @@ game_analytics_demo/.snowflake/
 game_analytics_demo/backup/
 .venv/
 venv/
+
+# Logs and build caches
+*.log
+*.tsbuildinfo
