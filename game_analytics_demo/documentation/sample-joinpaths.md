@@ -1,4 +1,7 @@
+
 # Sample Join Paths — Verified Query Candidates
+
+> **Scope note:** these join paths cross from `GAME_SALES` into `GAME_CATALOG`. `semantic_views/SV_GAME_SALES.yaml` is intentionally limited to the `GAME_SALES` schema, so these VQRs do not belong in that semantic view. They suit a cross-domain artifact instead, such as a Cortex Sense context or an agent that spans both domains.
 
 Using the four example questions in [title_code_xref.md](title_code_xref.md), three are worth a verified query (VQR) each. Each VQR adds a join lesson the others don't, so no join path is repeated.
 
@@ -9,7 +12,6 @@ Using the four example questions in [title_code_xref.md](title_code_xref.md), th
 | 3 | Revenue of similar / cannibalizing games | **Yes** | Pair table that needs the xref joined twice |
 | 4 | Platforms a game shipped on | **No** | Reads the xref alone with no revenue join, so it teaches no join path. Its real lesson ("don't split revenue by `PLATFORM_CODE`") is a warning and belongs in custom instructions. |
 
-> **Scope note:** these join paths cross from `GAME_SALES` into `GAME_CATALOG`. `semantic_views/SV_GAME_SALES.yaml` is intentionally limited to the `GAME_SALES` schema, so these VQRs do not belong in that semantic view. They suit a cross-domain artifact instead, such as a Cortex Sense context or an agent that spans both domains.
 
 ## VQR 1 — Base path: "What is total revenue by franchise?"
 
