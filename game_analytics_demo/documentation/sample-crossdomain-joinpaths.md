@@ -14,7 +14,7 @@ History shows Sense *how* the tables are joined; the rules tell it *why*, and wh
 
 ## The patterns
 
-The examples come from the questions in [title_code_xref.md](title_code_xref.md). Each one adds a join lesson the others don't.
+The examples cover the questions the xref opens up (see [Joining across domains](database-design.md#joining-across-domains)). Each one adds a join lesson the others don't.
 
 | # | Example question | Join lesson |
 |---|---|---|
