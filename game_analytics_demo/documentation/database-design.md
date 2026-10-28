@@ -41,6 +41,15 @@ Names are spelled differently, too. The same publisher is `PUBLISHER_LABEL = 'SI
 
 The only reliable bridge is `GAME_SALES.TITLE_CODE_XREF`, the PlayStation Store title-code mapping. It has one row per title code (100 rows for 88 titles, since a title released on PS4 and PS5 has two codes), and each title maps to exactly one catalog game.
 
+| Column | Meaning |
+|---|---|
+| `TITLE_CODE` | Platform product code (e.g. `CUSA86104`, `PPSA97532`). One row per code. |
+| `TITLE_ID` | Sales title, the key used by all revenue tables |
+| `PLATFORM_CODE` | PS2 / PS3 / PS4 / PS5 |
+| `CATALOG_GAME_ID` | Maps to `GAME_CATALOG.GAMES.GAME_ID` |
+
+Every row has a catalog ID and every catalog ID resolves to a real game. The xref opens up questions such as revenue by publisher, developer, franchise or indie vs. studio; revenue by genre, mechanic or game mode; revenue of similar or cannibalizing games (`GAME_SIMILARITY_SCORES`, `VW_CANNIBALIZATION_CANDIDATES`); and which platforms or codes a revenue-earning game shipped on.
+
 ```mermaid
 flowchart LR
   Revenue["GAME_SALES revenue tables (TITLE_ID)"] --> Map["SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM TITLE_CODE_XREF"]
@@ -61,11 +70,24 @@ GROUP BY 1 ORDER BY 2 DESC;
 The traps an agent without context falls into:
 
 - **No `DISTINCT` on the xref.** Joining revenue to `TITLE_CODE_XREF` directly counts a multi-platform title once per code and inflates totals.
-- **`TITLES.CATALOG_GAME_ID`.** It looks like the link but is NULL for 13 titles, so their revenue disappears.
-- **Dropping unmapped titles.** Two titles (about $230K) have no catalog mapping. An inner join loses them; report them as `'Unmapped'` so totals still match `GAME_REVENUE`.
+- **`TITLES.CATALOG_GAME_ID`.** It looks like the link but is NULL for 13 titles the xref does map (including *The Last of Us Part II* and *God of War: Ascension*), so their revenue disappears.
+- **Splitting revenue by `PLATFORM_CODE`.** `GAME_REVENUE` has no platform column, so the xref's codes can't split it. For a platform split, use `DIGITAL_PRODUCT_TRANSACTIONS.PLATFORM_ID`.
+- **Dropping unmapped titles.** Two titles (about $230K of $19.2M, 1.2%) have no catalog mapping. An inner join loses them; report them as `'Unmapped'` so totals still match `GAME_REVENUE`.
 - **One-to-many attributes.** A game has about three fully matched genres (`MATCH_STATUS = 'FULL'`; `PARTIAL` and `NONE` rows aren't membership), so genre revenue totals overlap and must not be summed or read as shares. Monetization models and awards behave the same way.
 
-These rules are recorded as Cortex Sense feedback rules (`scripts/record_feedback.py`), which is why only the Sense agent applies them consistently. More worked join paths: [sample-crossdomain-joinpaths.md](sample-crossdomain-joinpaths.md) and [title_code_xref.md](title_code_xref.md).
+These rules are recorded as Cortex Sense feedback rules (`scripts/record_feedback.py`), which is why only the Sense agent applies them consistently. More worked join paths: [sample-crossdomain-joinpaths.md](sample-crossdomain-joinpaths.md).
+
+### TITLE_CODE_XREF inside GAME_SALES
+
+Within `GAME_SALES`, the xref adds one join that answers new questions: digital revenue broken down by the individual product code each title shipped under. Its other uses either have no data behind them or need no xref at all.
+
+| Join | Works? | Finding |
+|---|---|---|
+| `PLATFORM_CODE` → `PLATFORMS.PLATFORM_CODE` | **Yes** | All 100 codes match a platform (PS2, PS3, PS4, PS5). Each title has at most one code per platform. |
+| `(TITLE_ID, PLATFORM_CODE)` → `DIGITAL_PRODUCT_TRANSACTIONS` (title via `DIGITAL_PRODUCTS`, platform via `PLATFORM_ID`) | **Yes** | The useful one: attributes each digital sale to an exact product code. `SV_GAME_SALES` has a verified query for it, "What is digital revenue by title code?" |
+| `CATALOG_GAME_ID` → `SUBSCRIPTION_PLANS.GAME_ID` | **No** | All 4 plans have NULL `GAME_ID`, so the $35.6M of subscription revenue can't be tied to a title. |
+| `GAME_REVENUE` / `QUARTERLY_REVENUE` | Not needed | Keyed by `TITLE_ID` only, with no platform column, so they join to `TITLES` directly. |
+| `HARDWARE_SALES_TRANSACTIONS` | Not applicable | Hardware sales have no title, so there's nothing for the xref to match. |
 
 ## Derived objects
 
