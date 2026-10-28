@@ -65,7 +65,7 @@ The traps an agent without context falls into:
 - **Dropping unmapped titles.** Two titles (about $230K) have no catalog mapping. An inner join loses them; report them as `'Unmapped'` so totals still match `GAME_REVENUE`.
 - **One-to-many attributes.** A game has about three fully matched genres (`MATCH_STATUS = 'FULL'`; `PARTIAL` and `NONE` rows aren't membership), so genre revenue totals overlap and must not be summed or read as shares. Monetization models and awards behave the same way.
 
-These rules are recorded as Cortex Sense feedback rules (`scripts/record_feedback.py`), which is why only the Sense agent applies them consistently. More worked join paths: [sample-joinpaths.md](sample-joinpaths.md) and [title_code_xref.md](title_code_xref.md).
+These rules are recorded as Cortex Sense feedback rules (`scripts/record_feedback.py`), which is why only the Sense agent applies them consistently. More worked join paths: [sample-crossdomain-joinpaths.md](sample-crossdomain-joinpaths.md) and [title_code_xref.md](title_code_xref.md).
 
 ## Derived objects
 
