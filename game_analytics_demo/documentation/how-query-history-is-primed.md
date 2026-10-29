@@ -106,13 +106,12 @@ The app itself still contains these three issues.
 | Total company revenue (SV) | Hardware $175,660,811 / Subscriptions $35,634,617 / Digital $19,231,852 |
 | Currently exclusive income, once per title | $6,807,969 |
 
-## Semantic view change made for this
+## How the semantic view reaches titles
 
-The SV relationship `TXN_TITLE` (`DIGITAL_TRANSACTIONS` → `TITLES`) was removed. Together
-with `TXN_PRODUCT` → `PRODUCT_TITLE`, it gave transactions two paths to `TITLES`. Any
-`SEMANTIC_VIEW` query of transaction revenue by title then failed with *"Multi-path
-relationship ... is not supported"*. Titles now resolve only through `DIGITAL_PRODUCTS`,
-which is the complete path.
+Transactions reach `TITLES` only through `DIGITAL_PRODUCTS` (`TXN_PRODUCT` → `PRODUCT_TITLE`),
+which is the complete path. The semantic view has no direct `DIGITAL_TRANSACTIONS` → `TITLES`
+relationship: a second path would make any `SEMANTIC_VIEW` query of transaction revenue by title
+fail with *"Multi-path relationship ... is not supported"*.
 
 ## Adding a query
 

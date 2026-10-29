@@ -13,9 +13,10 @@ Everything the demo creates lives in one database, `CORTEX_SENSE_DEMO`. `install
 
 ## Two domains, built like two separate systems
 
-The data imitates what most companies have: a **catalog** system that describes products and a **sales** system that records money, built by different teams. Each is complete and correct on its own. Neither knows the other's keys.
+The data imitates what most companies have when systems are built by different teams. It has a **catalog** system that describes products and a **sales** system that records money. Each is complete and correct on its own. Neither knows the other's keys. The data represents what we often see in real systems. There's duplicate data across both schemas. Data is not normalized into perfect entities, there's missing/null fields in some places and names are spelled differently, too. The same publisher is `PUBLISHER_LABEL = 'SIE'` in sales and `PUBLISHER_NAME = 'Sony Interactive Entertainment'` in the catalog. Studios use spaces in `TITLES.STUDIO` ("Naughty Dog") and underscores in `GAMES.DEVELOPER_NAME` ("Naughty_Dog"). Joining on names silently drops rows; join on IDs.
 
 - **`GAME_CATALOG`** is keyed by `GAME_ID`. `GAMES` carries the descriptive columns (developer, publisher, franchise, release date), and the many-to-many tables (`GAME_GENRE_CLASSIFICATION`, `GAME_ENGINES`, `GAME_AWARDS`, `GAME_ACCESSIBILITY`, `GAME_MODES`, ...) hang off it.
+
 - **`GAME_SALES`** is keyed by `TITLE_ID`. `TITLES` is the sales system's own list of the games it sells. All revenue tables use `TITLE_ID`:
   - `GAME_REVENUE`: lifetime digital income, one row per title (87 titles, about $19.23M).
   - `MONTHLY_REVENUE` and `QUARTERLY_REVENUE`: the same revenue over time, by monetization type.
@@ -35,11 +36,10 @@ Because each system keeps its own copy of the reference data, several tables exi
 | Monetization models | `MONETIZATION_TYPES` (9) | `MONETIZATION_TYPES` (9) | Catalog adds `DESCRIPTION`. |
 | Game monetization | `GAME_MONETIZATION` (129, by `GAME_ID`) | `GAME_MONETIZATION` (129, by `TITLE_ID`) | Different key. |
 
-Names are spelled differently, too. The same publisher is `PUBLISHER_LABEL = 'SIE'` in sales and `PUBLISHER_NAME = 'Sony Interactive Entertainment'` in the catalog. Studios use spaces in `TITLES.STUDIO` ("Naughty Dog") and underscores in `GAMES.DEVELOPER_NAME` ("Naughty_Dog"). Joining on names silently drops rows; join on IDs.
+
 
 ## Joining across domains
-
-The only reliable bridge is `GAME_SALES.TITLE_CODE_XREF`, the PlayStation Store title-code mapping. It has one row per title code (100 rows for 88 titles, since a title released on PS4 and PS5 has two codes), and each title maps to exactly one catalog game.
+There's no easy mapping of GAME_ID to GAME_ID across the systems to deliberately show how Cortex Sense can achieve cross-domain queries across complex join paths. The only reliable bridge is `GAME_SALES.TITLE_CODE_XREF`, the PlayStation Store title-code mapping. It has one row per title code (100 rows for 88 titles, since a title released on PS4 and PS5 has two codes), and each title maps to exactly one catalog game.
 
 | Column | Meaning |
 |---|---|
@@ -75,7 +75,7 @@ The traps an agent without context falls into:
 - **Dropping unmapped titles.** Two titles (about $230K of $19.2M, 1.2%) have no catalog mapping. An inner join loses them; report them as `'Unmapped'` so totals still match `GAME_REVENUE`.
 - **One-to-many attributes.** A game has about three fully matched genres (`MATCH_STATUS = 'FULL'`; `PARTIAL` and `NONE` rows aren't membership), so genre revenue totals overlap and must not be summed or read as shares. Monetization models and awards behave the same way.
 
-These rules are recorded as Cortex Sense feedback rules (`scripts/record_feedback.py`), which is why only the Sense agent applies them consistently. More worked join paths: [sample-crossdomain-joinpaths.md](sample-crossdomain-joinpaths.md).
+These rules are recorded as Cortex Sense feedback rules (`scripts/record_feedback.py`), which is why only the Sense agent applies them consistently. More worked join paths can be found here: [how-sense-handles-cross-domain.md](how-sense-handles-cross-domain.md).
 
 ### TITLE_CODE_XREF inside GAME_SALES
 

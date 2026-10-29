@@ -12,12 +12,50 @@ The demo asks the same ten questions of three Cortex Agents:
 - **The analyst agent** (`GAME_AGENT_ANALYST`) is the quick first pass an organization makes when the sales dashboard starts showing genre and other cross-domain charts and people want to ask questions across domains. It keeps the semantic view and adds catalog search and its own SQL, so it can reach every long-tail table. But it has no business context, so its cross-domain answers are often wrong: it joins on the wrong key, double-counts multi-platform titles, or mixes partial and full genre matches.
 - **The Cortex Sense agent** (`GAME_AGENT_SENSE`) gets its tables, business rules, query patterns and knowledge-base documents from a Cortex Sense context. It answers questions about revenue by genre, award winners, monetization models, engines, accessibility and audience overlap correctly, because the long-tail tables and the rules for using them are in its context.
 
-It shows two things:
+It shows three things:
 
 1. **Cross-domain answers.** Only the Cortex Sense agent reliably joins sales revenue to catalog attributes, and follows company documents such as the FY2027 portfolio strategy memo and the EU loot box regulatory brief.
-2. **Uplift.** On the current eval runs, the finance agent answers 3 of 10 questions correctly, the analyst agent 6, and the Cortex Sense agent 10.
+2. **Uplift in Accuracy** On the current eval runs, the finance agent answers 3 of 10 questions correctly, the analyst agent 6, and the Cortex Sense agent 10.
+3. **Tool and Token Usage Uplift** The Cortex Sense agent utilizes less tool calls and less tokens to answer the same questions correctly. Its context steers the Sense agent to the correct answer right away whereas other agents try different tools and probe for context to answer.
+
+## Project structure
+
+```
+game_analytics_demo/
+├── install.sh              One-command installer (steps 00-14, resumable)
+├── install/                Numbered install SQL: 01-12 (02, 03, 05, 07-10 generated)
+├── agents/                 Agent specs (CORTEX_SENSE_DEMO.AGENTS)
+├── semantic_views/         SV_GAME_SALES.yaml
+├── cortex_project/         Semantic view YAML to object mapping
+├── context/scope.yaml      Cortex Sense context scope
+├── stage_files/            Knowledge-base documents
+├── streamlits/             Game sales dashboard
+├── scripts/                generate_install_sql, record_feedback, prime_query_history,
+│                           build_web_data, rule_checks
+├── evaluations/demo/       Question bank and eval configs (finance, analyst, sense)
+├── documentation/          Database design, join paths, revenue types, query history priming
+├── sql/, data/             DDL and parquet data for GAME_CATALOG and GAME_SALES
+└── app/web/                Three-agent demo UI (Next.js + api_server.py)
+```
 
 ## Architecture
+
+The project has 3 agents defined and used to understand the uplift Cortex Sense offers. 
+
+```
+GAME_AGENT_FINANCE (baseline)
+  └── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
+```
+
+The Finance Agent was built for the CFO, and finance department to ask questions about revenue and sales. It uses a semantic view that is curated to answer these questions accurately, but it not capable of stepping outside the bounds of its finance/commerce domain. We call this the baseline. It is what many customers build to start.
+
+```
+GAME_AGENT_ANALYST (capable analyst, no Cortex Sense)
+  ├── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
+  └── own SQL + catalog search (AgenticAnalystAllowArbitrarySQL, EnableStandaloneExecuteSqlTool)
+```
+
+This agent represents a highly capable analyst that can search across schemas to discover tables, views, and more then build reasonable SQL to answer questions. While the analyst can probe and discover data and helpful joins, it does not have the full breadth of rules for how the business operates.
 
 ```
 GAME_AGENT_SENSE (EnableCortexSense)
@@ -28,14 +66,9 @@ GAME_AGENT_SENSE (EnableCortexSense)
         ├── streamlit_apps        GAME_SALES_DASHBOARD
         ├── semantic_views        SV_GAME_SALES (revenue model + verified queries)
         └── stage_files           FY2027 portfolio strategy memo, EU loot box regulatory brief
-
-GAME_AGENT_ANALYST (capable analyst, no Cortex Sense)
-  ├── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
-  └── own SQL + catalog search (AgenticAnalystAllowArbitrarySQL, EnableStandaloneExecuteSqlTool)
-
-GAME_AGENT_FINANCE (baseline)
-  └── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
 ```
+
+The project's Cortex Sense scope.yaml references numerous data sources to build its context and help it learn the business.
 
 | Component | Snowflake object | Source in this repo |
 |---|---|---|
@@ -81,16 +114,18 @@ The demo creates one database, `CORTEX_SENSE_DEMO`:
 
 | Schema | Holds |
 |---|---|
+| `AGENTS` | The three agents |
+| `CONTEXTS` | The Cortex Sense context and the knowledge-base stage |
+| `EVALS` | Eval dataset, configs and recorded results |
 | `GAME_CATALOG` | Game attributes: 90 games with genres, engines, awards, accessibility, ratings, modes, similarity and genre whitespace |
 | `GAME_SALES` | Sales titles, digital, hardware and subscription transactions, revenue tables, `SV_GAME_SALES`, the dashboard |
-| `CONTEXTS` | The Cortex Sense context and the knowledge-base stage |
-| `AGENTS` | The three agents |
-| `EVALS` | Eval dataset, configs and recorded results |
 | `PUBLIC` | Stages and file format used by the install |
 
-The catalog is keyed by `GAME_ID` and sales by `TITLE_ID`. Games, platforms and monetization models are duplicated in both schemas under different keys. The two domains join only through `SELECT DISTINCT TITLE_ID, CATALOG_GAME_ID FROM GAME_SALES.TITLE_CODE_XREF`. [documentation/database-design.md](documentation/database-design.md) covers the schemas, the duplicated tables, the cross-domain join rules and the derived objects in detail.
+
 
 ## Install, step by step
+
+> **Note:** For a one-step install, go to [Easy button: install with CoCo](#easy-button-install-with-coco). For a manual install, continue below.
 
 Each step is a numbered file in [`install/`](install/), run in order from the repo root. Steps 00, 13 and 14 are commands rather than SQL, because they generate files or start the UI.
 
@@ -161,9 +196,11 @@ CoCo creates the plan first, so you can see every object it will create before a
 
 ## Running the evals again
 
-The ten questions in [`evaluations/demo/demo_questions.yaml`](evaluations/demo/demo_questions.yaml) are of two kinds. Two are ties that every agent can answer from `SV_GAME_SALES`. The other eight need catalog tables, business rules or knowledge-base documents; S07 depends on the strategy memo and S08 on the EU brief. Each question's ground truth was computed on `CORTEX_SENSE_DEMO` with SQL (`gt_sql`) that follows the feedback rules. The eval judge sees only the ground-truth text; the UI also shows the rows `gt_sql` returns.
+The demo compares how each of the three agents answers a set of golden questions using Snowflake Agentic Evals. It displays the comparison and an analysis in a Next.js app UI. The ten questions in [`evaluations/demo/demo_questions.yaml`](evaluations/demo/demo_questions.yaml) are of two kinds. Two are ties that every agent can answer from `SV_GAME_SALES`. The other eight need catalog tables, business rules or knowledge-base documents; S07 depends on the strategy memo and S08 on the EU brief. Each question's ground truth was computed on `CORTEX_SENSE_DEMO` with SQL (`gt_sql`) that follows the feedback rules. The eval judge sees only the ground-truth text; the UI also shows the rows `gt_sql` returns.
 
-To re-run the evals, run step 12 with a new suffix (run names must be unique), and then step 13 with the new run names:
+The evals are already run in batch and ready for the UI to show. However, if the agents are changed, you will want to re-run the evals in batch again and record them for the UI to display.
+
+Easy button: to re-run evals simply ask CoCo to run batch evals on all three agents and then update the UI's recorded results. To manually re-run the evals, run step 12 with a new suffix (run names must be unique), and then step 13 with the new run names:
 
 ```bash
 bash install.sh --from 12
@@ -177,6 +214,9 @@ bash install.sh --from 12
 
 The UI is a Next.js app with a small Flask API that calls the agents for live questions:
 
+Easy button: 
+Ask CoCo to launch the UI app. It will launch it and provide you with the URL to open in your own external browser of choice.
+
 ```bash
 cd app/web
 npm install
@@ -184,6 +224,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python api_server.py &          # live mode and agent definitions, port 5001
 npm run build && npx next start -p 3000   # http://localhost:3000
 ```
+
 
 The UI has three tabs:
 
@@ -207,23 +248,3 @@ All titles in the data are Sony's, so no agent filters by publisher.
 - **Semantic view as context.** `SV_GAME_SALES` is a scope source, so its definitions, custom instructions and verified queries are documents the Sense agent reads. For the finance and analyst agents, it's their Cortex Analyst tool.
 - **Query history.** The primed queries teach correct join patterns; see [documentation/how-query-history-is-primed.md](documentation/how-query-history-is-primed.md).
 - **Knowledge base.** The strategy memo and EU brief in `stage_files/` are indexed through the `stage_files` source.
-
-## Project structure
-
-```
-game_analytics_demo/
-├── install.sh              One-command installer (steps 00-14, resumable)
-├── install/                Numbered install SQL: 01-12 (02, 03, 05, 07-10 generated)
-├── agents/                 Agent specs (CORTEX_SENSE_DEMO.AGENTS)
-├── semantic_views/         SV_GAME_SALES.yaml
-├── cortex_project/         Semantic view YAML to object mapping
-├── context/scope.yaml      Cortex Sense context scope
-├── stage_files/            Knowledge-base documents
-├── streamlits/             Game sales dashboard
-├── scripts/                generate_install_sql, record_feedback, prime_query_history,
-│                           build_web_data, rule_checks
-├── evaluations/demo/       Question bank and eval configs (finance, analyst, sense)
-├── documentation/          Database design, join paths, revenue types, query history priming
-├── sql/, data/             DDL and parquet data for GAME_CATALOG and GAME_SALES
-└── app/web/                Three-agent demo UI (Next.js + api_server.py)
-```

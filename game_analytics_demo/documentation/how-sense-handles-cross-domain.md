@@ -1,7 +1,19 @@
 
-# Sample Cross-Domain Join Paths
+# How Cortex Sense Handles Cross-Domain Questions
 
-These join paths cross from `GAME_SALES` into `GAME_CATALOG`. No semantic view covers them: `semantic_views/SV_GAME_SALES.yaml` is limited to the `GAME_SALES` schema on purpose. Instead, Cortex Sense learns them, which is why the Sense agent joins the two domains correctly and the other agents often don't.
+## Cross-domain in this demo is Cortex Sense only
+
+Many questions in this demo need both domains: revenue lives in `GAME_SALES` (keyed by `TITLE_ID`), while genre, franchise, developer, awards and similarity live in `GAME_CATALOG` (keyed by `GAME_ID`). Joining them correctly takes knowledge that neither schema carries on its own.
+
+The demo deliberately gives that knowledge to one place only, Cortex Sense:
+
+- **No semantic view spans both domains.** `SV_GAME_SALES` is the only semantic view, and it models `GAME_SALES` alone. It has no relationship to `GAME_CATALOG`, so Cortex Analyst can't answer a catalog-level revenue question through it.
+- **No ontology connects them.** The demo builds no business ontology or other shared model that maps sales titles to catalog games.
+- **Cortex Sense supplies the cross-domain knowledge.** The context `GAME_ANALYTICS_CTX_V2` learns the joins from query history and is told the business rules through feedback rules (both described below). Only `GAME_AGENT_SENSE` uses it.
+
+That is the comparison the demo is built to show. The finance agent stops at the semantic view. The analyst agent can see and query both schemas, but has to guess the joins and falls into the traps. The Sense agent answers cross-domain questions correctly because Cortex Sense, and nothing else, teaches it how.
+
+The rest of this page covers how Cortex Sense learns these joins and the patterns it learns.
 
 ## How Cortex Sense learns these joins
 
@@ -14,7 +26,7 @@ History shows Sense *how* the tables are joined; the rules tell it *why*, and wh
 
 ## The patterns
 
-The examples cover the questions the xref opens up (see [Joining across domains](database-design.md#joining-across-domains)). Each one adds a join lesson the others don't.
+The examples cover the questions the xref opens up (see [Joining across domains](how-database-is-designed.md#joining-across-domains)). Each one adds a join lesson the others don't.
 
 | # | Example question | Join lesson |
 |---|---|---|
