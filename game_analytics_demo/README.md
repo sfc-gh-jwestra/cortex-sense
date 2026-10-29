@@ -40,35 +40,7 @@ game_analytics_demo/
 
 ## Architecture
 
-The project has 3 agents defined and used to understand the uplift Cortex Sense offers. 
 
-```
-GAME_AGENT_FINANCE (baseline)
-  └── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
-```
-
-The Finance Agent was built for the CFO, and finance department to ask questions about revenue and sales. It uses a semantic view that is curated to answer these questions accurately, but it not capable of stepping outside the bounds of its finance/commerce domain. We call this the baseline. It is what many customers build to start.
-
-```
-GAME_AGENT_ANALYST (capable analyst, no Cortex Sense)
-  ├── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
-  └── own SQL + catalog search (AgenticAnalystAllowArbitrarySQL, EnableStandaloneExecuteSqlTool)
-```
-
-This agent represents a highly capable analyst that can search across schemas to discover tables, views, and more then build reasonable SQL to answer questions. While the analyst can probe and discover data and helpful joins, it does not have the full breadth of rules for how the business operates.
-
-```
-GAME_AGENT_SENSE (EnableCortexSense)
-  └── cortex_sense → CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2
-        ├── feedback rules        business definitions and procedures (served as corrections)
-        ├── catalog_objects       table documents for GAME_CATALOG and GAME_SALES
-        ├── query_history         query patterns primed by install/05-prime-query-history.sql
-        ├── streamlit_apps        GAME_SALES_DASHBOARD
-        ├── semantic_views        SV_GAME_SALES (revenue model + verified queries)
-        └── stage_files           FY2027 portfolio strategy memo, EU loot box regulatory brief
-```
-
-The project's Cortex Sense scope.yaml references numerous data sources to build its context and help it learn the business.
 
 | Component | Snowflake object | Source in this repo |
 |---|---|---|
@@ -236,13 +208,40 @@ The rule checks are deterministic regex checks of an agent's SQL against six of 
 
 ## Agents
 
-- **GAME_AGENT_SENSE** ([spec](agents/GAME_AGENT_SENSE.yaml)) sets `experimental.EnableCortexSense: true` and declares one tool, `data_to_chart`. Its orchestration instructions tell it to call `cortex_sense` with the context before writing any SQL, to read the corrections first, and to use fully qualified `CORTEX_SENSE_DEMO` names. Business definitions don't go in the spec; they go in feedback rules or the semantic view.
-- **GAME_AGENT_FINANCE** ([spec](agents/GAME_AGENT_FINANCE.yaml)) has one Cortex Analyst tool over `SV_GAME_SALES`, plus `data_to_chart`.
-- **GAME_AGENT_ANALYST** ([spec](agents/GAME_AGENT_ANALYST.yaml)) has the same Cortex Analyst tool and `data_to_chart`, plus the experimental flags `AgenticAnalystAllowArbitrarySQL` (its own SQL on any readable table), `EnableStandaloneExecuteSqlTool` (catalog and tool search) and `FallbackWarehouse: COMPUTE_WH`. Its instructions are an analyst's habits (explore schemas, check cardinality, state assumptions) without business rules. It shows what a strong agent gets right by exploring, and which rules it still breaks without Cortex Sense. Agent tools run with the caller's role, so an analyst agent run as `ACCOUNTADMIN` can also find and read the knowledge-base stage.
+The project has 3 agents defined and used to understand the uplift Cortex Sense offers. 
 
-All titles in the data are Sony's, so no agent filters by publisher.
+```
+GAME_AGENT_FINANCE (baseline)
+  └── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
+```
+
+- **GAME_AGENT_FINANCE** ([spec](agents/GAME_AGENT_FINANCE.yaml)) has one Cortex Analyst tool over `SV_GAME_SALES`, plus `data_to_chart`. The Finance Agent was built for the CFO, and finance department to ask questions about revenue and sales. It uses a semantic view that is curated to answer these questions accurately, but it not capable of stepping outside the bounds of its finance/commerce domain. We call this the baseline. It is what many customers build to start.
+
+```
+GAME_AGENT_ANALYST (capable analyst, no Cortex Sense)
+  ├── Cortex Analyst → CORTEX_SENSE_DEMO.GAME_SALES.SV_GAME_SALES
+  └── own SQL + catalog search (AgenticAnalystAllowArbitrarySQL, EnableStandaloneExecuteSqlTool)
+```
+
+- **GAME_AGENT_ANALYST** ([spec](agents/GAME_AGENT_ANALYST.yaml)) has the same Cortex Analyst tool and `data_to_chart`, plus the experimental flags `AgenticAnalystAllowArbitrarySQL` (its own SQL on any readable table), `EnableStandaloneExecuteSqlTool` (catalog and tool search) and `FallbackWarehouse: COMPUTE_WH`. Its instructions are an analyst's habits (explore schemas, check cardinality, state assumptions) without business rules. It shows what a strong agent gets right by exploring, and which rules it still breaks without Cortex Sense. Agent tools run with the caller's role, so an analyst agent run as `ACCOUNTADMIN` can also find and read the knowledge-base stage. This agent represents a highly capable analyst that can search across schemas to discover tables, views, and more then build reasonable SQL to answer questions. While the analyst can probe and discover data and helpful joins, it does not have the full breadth of rules for how the business operates.
+
+```
+GAME_AGENT_SENSE (EnableCortexSense)
+  └── cortex_sense → CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2
+        ├── feedback rules        business definitions and procedures (served as corrections)
+        ├── catalog_objects       table documents for GAME_CATALOG and GAME_SALES
+        ├── query_history         query patterns primed by install/05-prime-query-history.sql
+        ├── streamlit_apps        GAME_SALES_DASHBOARD
+        ├── semantic_views        SV_GAME_SALES (revenue model + verified queries)
+        └── stage_files           FY2027 portfolio strategy memo, EU loot box regulatory brief
+```
+
+- **GAME_AGENT_SENSE** ([spec](agents/GAME_AGENT_SENSE.yaml)) sets `experimental.EnableCortexSense: true` and declares one tool, `data_to_chart`. Its orchestration instructions tell it to call `cortex_sense` with the context before writing any SQL, to read the corrections first, and to use fully qualified `CORTEX_SENSE_DEMO` names. Business definitions don't go in the spec; they go in feedback rules or the semantic view.
+
 
 ## The Cortex Sense context
+
+The project's Cortex Sense [scope.yaml](context/scope.yaml) references numerous data sources to build its context and help it learn the business.
 
 - **Feedback rules.** `RECORDS` in [`scripts/record_feedback.py`](scripts/record_feedback.py) is the source of truth for the business rules: definitions, procedures and retrieval steers. They're served to the agent as corrections at query time.
 - **Semantic view as context.** `SV_GAME_SALES` is a scope source, so its definitions, custom instructions and verified queries are documents the Sense agent reads. For the finance and analyst agents, it's their Cortex Analyst tool.
