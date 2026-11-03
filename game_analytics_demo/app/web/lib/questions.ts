@@ -19,12 +19,12 @@ export const PASS = 0.67;
 
 export const TIER_LABELS: Record<string, string> = {
   tie: "Tie (answerable from the SV_GAME_SALES semantic view)",
-  sense_only: "Sense only (catalog tables, business rules and knowledge documents)",
+  sense_only: "Long-tail (catalog tables, business rules and knowledge documents)",
 };
 
 export const TIER_SHORT: Record<string, string> = {
   tie: "Tie",
-  sense_only: "Sense only",
+  sense_only: "Long-tail",
 };
 
 export const TIER_COLORS: Record<string, string> = {

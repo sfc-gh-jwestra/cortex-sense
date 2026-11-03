@@ -133,6 +133,18 @@ def _preview(raw):
     return {"text": json.dumps(obj)[:400]}
 
 
+TOKEN_KEY = re.compile(r"^snow\.ai\.observability\.agent\.\w+\.token_count\.(total|input|output|cache_read_input)$")
+
+
+def span_tokens(attrs, totals):
+    """Add one span's agent LLM token counts (planning, response, suggested queries) to totals.
+    Judge spans use ai.observability.eval.* keys, so they don't match."""
+    for k, v in attrs.items():
+        m = TOKEN_KEY.match(k)
+        if m and v not in (None, ""):
+            totals[m.group(1)] += int(v)
+
+
 def load_steps(a, record_id):
     rows = snow(
         f"""SELECT SPAN_TYPE, SPAN_NAME, STATUS, DURATION_MS, TOOL, ATTRIBUTES
@@ -142,9 +154,11 @@ def load_steps(a, record_id):
         check=False,
     ) or []
     steps = []
+    totals = {"total": 0, "input": 0, "output": 0, "cache_read_input": 0}
     for r in rows:
         name, stype = r["SPAN_NAME"] or "", r["SPAN_TYPE"] or ""
         attrs = json.loads(r["ATTRIBUTES"] or "{}")
+        span_tokens(attrs, totals)
         m = TOOL_SPAN.match(name)
         if stype == "chart_generation":
             steps.append({"tool": "data_to_chart", "kind": "Chart", "input": None, "sql": None,
@@ -165,7 +179,10 @@ def load_steps(a, record_id):
             "ms": int(r["DURATION_MS"] or 0),
             "result": _preview(_attr(attrs, ".sql_execution.result", ".result", ".response")),
         })
-    return steps
+    tokens = None if not totals["total"] else {
+        "total": totals["total"], "input": totals["input"], "output": totals["output"],
+        "cacheRead": totals["cache_read_input"]}
+    return steps, tokens
 
 
 def tables_used(steps):
@@ -281,10 +298,10 @@ def main():
             r = results[a["key"]].get(qn["question"])
             if not r:
                 recorded[a["key"]] = {"text": "", "score": None, "elapsed": 0, "run": None, "steps": [],
-                                      "ruleFlags": [], "judgeExplanation": None, "tablesUsed": []}
+                                      "ruleFlags": [], "judgeExplanation": None, "tablesUsed": [], "tokens": None}
                 verdicts[a["key"]] = None
                 continue
-            steps = load_steps(a, r["RECORD_ID"])
+            steps, tokens = load_steps(a, r["RECORD_ID"])
             score = float(r["SCORE"]) if r["SCORE"] is not None else None
             recorded[a["key"]] = {
                 "text": tables_to_markdown(r["OUTPUT"]),
@@ -295,6 +312,7 @@ def main():
                 "ruleFlags": check_steps(steps),
                 "judgeExplanation": r["JUDGE_EXPLANATION"],
                 "tablesUsed": tables_used(steps),
+                "tokens": tokens,
             }
             verdicts[a["key"]] = verdict(score)
         tables = qn.get("tables", [])

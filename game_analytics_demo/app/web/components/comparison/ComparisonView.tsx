@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { EVAL_QUESTIONS, TIER_LABELS, TIER_COLORS, TIER_SHORT, API_URL, AGENTS, PASS } from "@/lib/questions";
 import { AgentKey, AgentResponse, EvalQuestion, Verdict } from "@/lib/types";
 import AgentTrace, { MiniTable } from "@/components/common/AgentTrace";
+import TokenCount from "@/components/common/TokenCount";
 
 type Responses = Partial<Record<AgentKey, AgentResponse>>;
 
@@ -39,6 +40,11 @@ function AgentPanel({ label, sublabel, response, color }: { label: string; subla
         </div>
         <div className="flex items-center gap-2">
           <ScoreBadge score={response.score} />
+          {response.tokens && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--border)] text-[var(--text-muted)]">
+              <TokenCount t={response.tokens} suffix=" tokens" />
+            </span>
+          )}
           <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--border)] text-[var(--text-muted)]">
             {response.elapsed}s
           </span>
@@ -72,6 +78,10 @@ const VERDICT_STYLE: Record<string, { label: string; cls: string }> = {
   wrong: { label: "wrong or can't answer", cls: "text-red-600" },
 };
 
+// Same thresholds as scripts/build_web_data.py verdict().
+const toVerdict = (score?: number | null): Verdict =>
+  score === undefined || score === null ? null : score >= PASS ? "correct" : score > 0 ? "partial" : "wrong";
+
 function firstSentence(text?: string | null) {
   if (!text) return "";
   // Drop judge preambles ("Comparing the actual response to the expected answer:") and list markers.
@@ -103,6 +113,7 @@ export default function ComparisonView() {
       out[a.key] = {
         text: r.text || "No recorded answer yet. Re-run this agent's demo eval.", htmlArtifacts: [],
         elapsed: r.elapsed, score: r.score, steps: r.steps, ruleFlags: r.ruleFlags, judgeExplanation: r.judgeExplanation,
+        tokens: r.tokens,
       };
     }
     setResponses(out);
@@ -116,7 +127,7 @@ export default function ComparisonView() {
       const res = await fetch(`${API_URL}/api/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q.q }),
+        body: JSON.stringify(q.id === "Custom" ? { question: q.q } : { question: q.q, id: q.id }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -183,7 +194,7 @@ export default function ComparisonView() {
           </div>
         </div>
         <p className="text-[11px] text-[var(--text-muted)] mt-2">
-          Recorded replays the scored answers and tool steps from the latest demo eval runs instantly. Live calls all three agents now (about 10 to 90 seconds).
+          Recorded replays the scored answers and tool steps from the latest demo eval runs instantly. Live calls all three agents now (about 10 to 90 seconds) and scores each answer against the expected answer with a live judge.
         </p>
 
         <div className="mt-4 pt-4 border-t border-[var(--border)]">
@@ -271,8 +282,21 @@ export default function ComparisonView() {
                   </div>
                 );
               })
+            ) : currentQ.id !== "Custom" ? (
+              AGENTS.map((a) => {
+                const r = responses[a.key];
+                const style = r ? VERDICT_STYLE[toVerdict(r.score) ?? ""] : null;
+                return (
+                  <div key={a.key}>
+                    <div className={`text-xs font-semibold uppercase tracking-wider ${style?.cls ?? "text-[var(--text-muted)]"}`}>
+                      <span style={{ color: a.color }}>{a.label}</span>: {!r ? "waiting for answer" : style ? `${style.label} (live judge)` : "not scored"}
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)]">{firstSentence(r?.judgeExplanation)}</p>
+                  </div>
+                );
+              })
             ) : (
-              <p className="text-xs text-[var(--text-muted)]">Live answers aren't scored; compare them with the expected answer and rule flags.</p>
+              <p className="text-xs text-[var(--text-muted)]">Custom questions have no expected answer, so they aren&apos;t scored; compare them using the rule flags.</p>
             )}
             <div className="pt-2 border-t border-[var(--border)]">
               <div className="text-xs font-semibold" style={{ color: "var(--sense)" }}>Context Cortex Sense brings</div>

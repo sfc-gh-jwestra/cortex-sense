@@ -27,8 +27,16 @@ CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"])
 REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(REPO_DIR, "scripts"))
 from rule_checks import check_steps  # noqa: E402  (same flags as the recorded answers)
+import yaml  # noqa: E402
 
 CONNECTION_NAME = os.environ.get("SNOWFLAKE_CONNECTION_NAME", "CORTEX_SENSE_DEMO_CONN")
+
+# Live answers to bank questions are scored against their ground_truth by an LLM judge that mirrors
+# the eval's answer_correctness scale (0, 0.33, 0.67, 1.00). Loaded server-side so the client can't
+# supply its own golden answer.
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "claude-sonnet-4-5")
+with open(os.path.join(REPO_DIR, "evaluations", "demo", "demo_questions.yaml")) as _f:
+    GOLDEN = {q["id"]: q for q in yaml.safe_load(_f)["questions"]}
 
 # Allowed files for the file viewer (relative to the repo root)
 ALLOWED_FILES = {
@@ -81,15 +89,33 @@ def _preview(obj, limit=5):
     return {"text": json.dumps(obj)[:400]}
 
 
+def parse_tokens(resp):
+    """Sum metadata.usage.tokens_consumed across models into {total, input, output, cacheRead}."""
+    usage = ((resp.get("metadata") or {}).get("usage") or {}).get("tokens_consumed") or []
+    totals = {"input": 0, "output": 0, "cacheRead": 0}
+    for u in usage:
+        if not isinstance(u, dict):
+            continue
+        inp, out = u.get("input_tokens") or {}, u.get("output_tokens") or {}
+        totals["input"] += int(inp.get("total") or 0)
+        totals["cacheRead"] += int(inp.get("cache_read") or 0)
+        totals["output"] += int(out.get("total") or 0)
+    if not (totals["input"] or totals["output"]):
+        return None
+    return {"total": totals["input"] + totals["output"], **totals}
+
+
 def parse_agent_response(raw):
     html_artifacts = []
     text_parts = []
     steps = []
+    tokens = None
     raw_str = str(raw) if raw else ""
 
     try:
         resp = json.loads(raw) if isinstance(raw, str) else raw
         if isinstance(resp, dict):
+            tokens = parse_tokens(resp)
             for item in resp.get("content", []):
                 if not isinstance(item, dict):
                     continue
@@ -132,7 +158,7 @@ def parse_agent_response(raw):
     # server_skill chart_instructions is an internal load before charting; recorded traces omit it too
     steps = [s for s in steps if not (s["tool"] == "server_skill" and "chart_instructions" in (s["input"] or ""))]
     return {"text": "\n".join(text_parts), "htmlArtifacts": html_artifacts,
-            "steps": steps, "ruleFlags": check_steps(steps)}
+            "steps": steps, "ruleFlags": check_steps(steps), "tokens": tokens}
 
 
 def call_single_agent(question, agent_fqn):
@@ -159,6 +185,50 @@ def call_single_agent(question, agent_fqn):
     return {"text": "No response.", "htmlArtifacts": [], "elapsed": 0, "steps": [], "ruleFlags": []}
 
 
+JUDGE_PROMPT = """You are grading an analytics agent's answer for correctness against an expected answer.
+
+Question:
+{question}
+
+Expected answer (the ground truth, including any stated tolerances):
+{expected}
+
+Agent's answer:
+{answer}
+
+Rate how correct the agent's answer is compared with the expected answer:
+3 = fully correct: the key facts, figures and conclusions match, within any stated tolerance
+2 = mostly correct: minor omissions or small errors
+1 = partly correct: some key facts right, but significant errors or omissions
+0 = wrong, unrelated, or the agent declined to answer
+
+Reply with only JSON: {{"rating": <0-3>, "explanation": "<one or two sentences>"}}"""
+
+
+def judge_answer(question, expected, answer):
+    """Score one answer against its golden answer; returns {score, judgeExplanation}."""
+    if not (answer or "").strip():
+        return {"score": 0.0, "judgeExplanation": "No answer was returned."}
+    prompt = JUDGE_PROMPT.format(question=question, expected=expected.strip(), answer=answer[:12000])
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT AI_COMPLETE(%s, %s)", (JUDGE_MODEL, prompt))
+        raw = cur.fetchone()[0] or ""
+        cur.close()
+        conn.close()
+        try:  # AI_COMPLETE returns the model text as a JSON string, often wrapped in a ```json fence
+            raw = json.loads(raw) if raw.startswith('"') else raw
+        except ValueError:
+            pass
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        verdict = json.loads(m.group(0) if m else raw)
+        rating = max(0, min(3, int(verdict["rating"])))
+        return {"score": round(rating / 3, 2), "judgeExplanation": str(verdict.get("explanation", "")).strip()}
+    except Exception as e:
+        return {"score": None, "judgeExplanation": f"Live judge failed: {str(e)[:200]}"}
+
+
 @app.route("/api/agent", methods=["POST"])
 def agent_endpoint():
     data = request.json or {}
@@ -167,9 +237,18 @@ def agent_endpoint():
         return jsonify({"error": "Missing question"}), 400
     if len(question) > 2000:
         return jsonify({"error": "Question too long"}), 400
+    # Score only bank questions asked verbatim; custom questions have no golden answer.
+    bank = GOLDEN.get(data.get("id") or "")
+    expected = bank.get("ground_truth") if bank and bank["question"].strip() == question else None
+
+    def run(fqn):
+        r = call_single_agent(question, fqn)
+        if expected and not r["text"].startswith("Error:"):
+            r.update(judge_answer(question, expected, r["text"]))
+        return r
 
     with ThreadPoolExecutor(max_workers=len(AGENTS)) as executor:
-        futures = {key: executor.submit(call_single_agent, question, fqn) for key, fqn in AGENTS.items()}
+        futures = {key: executor.submit(run, fqn) for key, fqn in AGENTS.items()}
         return jsonify({key: f.result() for key, f in futures.items()})
 
 

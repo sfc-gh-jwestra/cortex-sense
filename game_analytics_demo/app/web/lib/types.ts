@@ -23,10 +23,18 @@ export interface RuleFlag {
   reason: string;
 }
 
+export interface TokenUsage {
+  total: number;
+  input: number;
+  output: number;
+  cacheRead: number;
+}
+
 export interface AgentResponse {
   text: string;
   htmlArtifacts: string[];
   elapsed: number;
+  tokens?: TokenUsage | null;
   score?: number | null;
   steps?: ToolStep[];
   ruleFlags?: RuleFlag[];
@@ -42,6 +50,7 @@ export interface RecordedAnswer {
   ruleFlags: RuleFlag[];
   judgeExplanation: string | null;
   tablesUsed: string[];
+  tokens?: TokenUsage | null;
 }
 
 export interface ExpectedRows {
