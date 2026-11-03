@@ -1,7 +1,9 @@
-# Only game_analytics_demo is tracked for now
+# Only the root README, game_analytics_demo and intro-workshop are tracked for now
 /*
 !/.gitignore
+!/README.md
 !/game_analytics_demo/
+!/intro-workshop/
 
 # OS / tooling
 .DS_Store
