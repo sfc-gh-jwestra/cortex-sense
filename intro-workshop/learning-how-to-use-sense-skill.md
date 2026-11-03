@@ -73,8 +73,10 @@ If CoCo doesn't deduce the domain from the initial prompt, supply it in a anothe
 **Copy-this-Prompt**: "domain = game-classification"
 
 
-Response
-============
+Cortex Sense will scan at the ACCOUNT level, for anything that resembles the domain. In this case, it even found a Business Ontology for gaming that was setup for a different demo. You can approve or deny sources.
+
+
+### Sample Response
 
 Storage is set. Now I'm running the discovery scan in parallel: catalog searches, existing context, ontology, warehouse/role, and the background query-history scan.
 
@@ -116,7 +118,9 @@ ONTOLOGY_DEMO.GAME_CATALOG.* holds the same 38 tables as CORTEX_SENSE_DEMO.GAME_
 The only Streamlit app in CORTEX_SENSE_DEMO is GAME_SALES_DASHBOARD, a sales dashboard, so I left it out. The ontology domain is saved with the scope, but the build doesn't index ontology content yet.
 
   [skip]  must-have tables   e.g. CORTEX_SENSE_DEMO.GAME_SALES.TITLE_CODE_XREF
+
   [skip]  business docs      e.g. a genre-rules spec on a stage
+
   [skip]  dbt                stage path to manifest.json — or a local repo path and I'll upload it
 
 
@@ -221,5 +225,3 @@ The cortex_sense_inbox tool lists feedback records for a context, so I'll use it
 | Rating equivalence | Self-join `AGE_RATINGS` on `MIN_AGE`. |
 
 The definitions table has nine rows, one short of the count. Breaking down the other three types the same way gives 8 procedural, 7 retrieval steers and 2 annotations: 9 + 8 + 7 + 2 = 26.
-
-None of these rules covers customers or subscriptions, which is why the earlier answer relied only on table and ontology docs.
