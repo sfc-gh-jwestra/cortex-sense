@@ -125,13 +125,15 @@ Continue once the build reports it is done.
 
 ## Step 3: Ask a baseline question
 
-Ask a question that depends on a business rule the semantic view doesn't enforce.
+Ask a question that depends on PawPrime's net sales rules.
 
 **Copy-this-Prompt:**
 
 > Using the pawprime-sales context, what were total sales by product category?
 
-Look at the SQL CoCo shows. The `revenue` metric in `SV_PET_STORE` includes **every** order status, including `Cancelled`. Note whether the answer filters out cancelled orders. Write down the total for one category (for example Food) so you can compare it in Lab 3.
+Look at the SQL CoCo shows. The `revenue` metric in `SV_PET_STORE` includes every order status, but its comment says to filter out `Cancelled` for net sales, so the context learned that rule from the build. Expect the SQL to exclude cancelled orders: that's the context working!
+
+Now check `Returned` orders. PawPrime finance also excludes returns from net sales, but nothing in the tables or semantic view says so, so the answer counts them as sales. Write down the Food total (about $60,263) so you can compare it in Lab 3.
 
 ## Step 4: Ask more questions in CoCo
 
@@ -157,9 +159,10 @@ For each answer, check that:
 
 - Revenue comes from `ORDER_ITEM.LINE_TOTAL`
 - Cancelled orders are excluded
+- Whether Returned orders are counted as sales (they shouldn't be, but the context doesn't know that yet)
 - Joins match the Lab 1 relationships (`ORDERS.CUSTOMER_ID → CUSTOMER`, `ORDER_ITEM.ORDER_ID → ORDERS`, `ORDER_ITEM.PRODUCT_ID → PRODUCT`)
 
-Note which answers look wrong — for example, any that count cancelled orders as sales. In [Lab 3](lab-3-evaluate-context.md) you'll measure these with an eval and fix them with feedback rules.
+Note which answers look wrong — for example, any that count returned orders as sales. In [Lab 3](lab-3-evaluate-context.md) you'll measure these with an eval and fix them with feedback rules.
 
 ## Cleanup
 

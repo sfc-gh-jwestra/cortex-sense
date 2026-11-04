@@ -2,7 +2,7 @@
 
 ## Overview
 
-In Lab 2 you built the `pawprime-sales` context and asked it questions. Some answers were right; others counted cancelled orders as sales. In this lab you **measure** answer quality with an eval set, **fix** what's wrong with feedback rules, and **prove** the fix by re-running the eval.
+In Lab 2 you built the `pawprime-sales` context and asked it questions. The context correctly excluded cancelled orders (it learned that from the semantic view), but it counted returned orders as sales, which PawPrime finance doesn't allow. In this lab you **measure** answer quality with an eval set, **fix** what's wrong with feedback rules, and **prove** the fix by re-running the eval.
 
 You will:
 
@@ -69,7 +69,7 @@ CoCo asks where questions should come from (use the setup questions, the context
 - **Correct** it: `update golden q<n> "<answer>"`
 - **Drop** it: `reject q<n>`
 
-Make sure the expected answers follow PawPrime's business rules. For example, net sales **excludes** orders where `ORDER_STATUS = 'Cancelled'`, and revenue is `SUM(ORDER_ITEM.LINE_TOTAL)`. Every question needs a confirmed expected answer before it can be scored.
+Make sure the expected answers follow PawPrime's business rules. Net sales **excludes** both cancelled and returned orders (`ORDER_STATUS NOT IN ('Cancelled', 'Returned')`), and revenue is `SUM(ORDER_ITEM.LINE_TOTAL)`. If a proposed expected answer only excludes cancelled orders, correct it with `update golden q<n>`; otherwise the baseline will score as correct and there's nothing to fix. Every question needs a confirmed expected answer before it can be scored.
 
 ## Step 2: Run the baseline eval
 
@@ -81,7 +81,7 @@ The eval scores a live Cortex Sense agent against your confirmed questions using
 
 When the run finishes, CoCo shows a score per question and a Snowsight link where you can see each produced answer and the judge's reasoning.
 
-Expect the net sales and category questions to score low. The context doesn't yet know that cancelled orders are excluded. Write down the scores so you can compare them in Step 5.
+Expect the net sales and category questions to score low. The context excludes cancelled orders but still counts returned orders as sales. Write down the scores so you can compare them in Step 5.
 
 ## Step 3: Add feedback rules
 
@@ -98,11 +98,11 @@ Feedback rules are standing instructions the context applies on top of what it l
 
 Scope changes (adding a schema, excluding objects) are not feedback; make those through the scope card instead.
 
-PawPrime's finance team says "sales" always means **net sales**, which exclude cancelled orders. That's a policy that should hold every time, so it's a procedural rule.
+PawPrime's finance team says "sales" always means **net sales**, which exclude both cancelled and returned orders. Nothing in the data says returns are excluded, so the context can only learn it from you. That's a policy that should hold every time, so it's a procedural rule.
 
 **Copy-this-Prompt:**
 
-> With /cortex-sense, record feedback for the pawprime-sales context: sales and revenue always mean net sales, which exclude orders where ORDERS.ORDER_STATUS = 'Cancelled'. Revenue is SUM(ORDER_ITEM.LINE_TOTAL), never a sum of ORDERS columns.
+> With /cortex-sense, record feedback for the pawprime-sales context: PawPrime net sales excludes both Cancelled and Returned orders (ORDERS.ORDER_STATUS NOT IN ('Cancelled', 'Returned')). Sales and revenue always mean net sales, computed as SUM(ORDER_ITEM.LINE_TOTAL), never a sum of ORDERS columns.
 
 > **Tip:** you can also start from a failing question. Type `refine q<n>` and CoCo loads that question and its expected answer as the starting point for the correction.
 
@@ -126,7 +126,7 @@ CoCo opens the feedback inbox and summarizes the rules. Expect something like:
 
 | Type | Rule | State |
 |---|---|---|
-| Procedural | Sales and revenue mean net sales; exclude `ORDER_STATUS = 'Cancelled'`. Revenue is `SUM(ORDER_ITEM.LINE_TOTAL)`. | active |
+| Procedural | Sales and revenue mean net sales; exclude `ORDER_STATUS IN ('Cancelled', 'Returned')`. Revenue is `SUM(ORDER_ITEM.LINE_TOTAL)`. | active |
 | Definition | Gross margin is `LINE_TOTAL - QUANTITY * UNIT_COST`; margin % divides by `LINE_TOTAL`. | active |
 
 If a rule still shows `needs_feedback`, it hasn't been approved yet; go back to Step 3.
@@ -157,7 +157,7 @@ Ask the Lab 2 baseline question again:
 
 > Using the pawprime-sales context, what were total sales by product category?
 
-The SQL should now include `ORDER_STATUS <> 'Cancelled'`, and the Food total should be lower than the one you wrote down in Lab 2. CoCo ends the answer with a Cortex Sense citation line and names the objects it used.
+The SQL should now include `ORDER_STATUS NOT IN ('Cancelled', 'Returned')`, and the Food total should drop from about $60,263 (Lab 2) to about $57,806. CoCo ends the answer with a Cortex Sense citation line and names the objects it used.
 
 ## Cleanup
 
