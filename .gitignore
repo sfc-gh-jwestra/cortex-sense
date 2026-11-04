@@ -20,6 +20,7 @@ game_analytics_demo/.install_state
 game_analytics_demo/.snowflake/
 game_analytics_demo/backup/
 .venv/
+deep_pass_results.json
 venv/
 
 # Logs and build caches
