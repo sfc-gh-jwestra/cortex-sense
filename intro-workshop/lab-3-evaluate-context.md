@@ -96,7 +96,7 @@ Feedback rules are standing instructions the context applies on top of what it l
 | Relationship | X is the same as, derives from, or feeds Y | "LINE_TOTAL = QUANTITY * UNIT_PRICE." |
 | Association | Concept X lives in table Y | "Autoship enrollment lives in CUSTOMER.IS_AUTOSHIP." |
 
-See [learning-how-to-use-sense-skill.md](learning-how-to-use-sense-skill.md) for more on each type. Scope changes (adding a schema, excluding objects) are not feedback; make those through the scope card instead.
+Scope changes (adding a schema, excluding objects) are not feedback; make those through the scope card instead.
 
 PawPrime's finance team says "sales" always means **net sales**, which exclude cancelled orders. That's a policy that should hold every time, so it's a procedural rule.
 
