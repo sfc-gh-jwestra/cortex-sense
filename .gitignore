@@ -22,6 +22,8 @@ game_analytics_demo/backup/
 .venv/
 deep_pass_results.json
 venv/
+# Intro-workshop run outputs (agent eval configs from `cortex agent-studio eval-write`)
+intro-workshop/cortex_project/
 
 # Logs and build caches
 *.log
