@@ -1,0 +1,41 @@
+business_domain: PAWPRIME_SALES
+status: active
+warehouse: COMPUTE_WH
+sources:
+  - name: catalog_objects
+    type: snowflake_metadata
+    enabled: true
+    rules:
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.WORKSHOP.*
+        est_tables: 4
+        user_prompt: "Scope it to the tables in CORTEX_SENSE_DEMO.WORKSHOP"
+  - name: semantic_views
+    type: snowflake_content
+    enabled: true
+    rules:
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.WORKSHOP.SV_PET_STORE
+        user_prompt: "use the semantic view CORTEX_SENSE_DEMO.WORKSHOP.SV_PET_STORE"
+  - name: query_history
+    type: snowflake_metadata
+    enabled: true
+    rules:
+      - type: pattern
+        pattern: CORTEX_SENSE_DEMO.WORKSHOP.*
+        user_prompt: "Look in query history for the same patterns as the schema"
+  - name: streamlit_apps
+    type: snowflake_content
+    enabled: true
+  - name: dbt_projects
+    type: snowflake_content
+    enabled: true
+pending_asks:
+  - ask: "Example questions for eval: What were net sales last month? Which product categories have the highest gross margin? What is the average order value by channel? Do Autoship customers spend more than one-time buyers? Which customers haven't ordered in the last 180 days?"
+    provenance:
+      state: needs-feedback
+      origin: declared-by-user
+  - ask: "business docs — stage path to metric definitions (net sales, gross margin)"
+    provenance:
+      state: needs-feedback
+      origin: inferred-shown-to-user
