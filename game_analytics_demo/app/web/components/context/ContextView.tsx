@@ -15,7 +15,7 @@ const SOURCES: { key: string; title: string; detail: string }[] = [
   { key: "feedback_rules", title: `Feedback rules (${DEMO_DATA.rules.length})`, detail: "record_feedback.py: business definitions, procedures and retrieval steers" },
   { key: "finance_agent", title: "Agent spec: GAME_AGENT_FINANCE", detail: "Without Cortex Sense: Cortex Analyst tool over SV_GAME_SALES only" },
   { key: "analyst_agent", title: "Agent spec: GAME_AGENT_ANALYST", detail: "Capable analyst without Cortex Sense: Cortex Analyst plus catalog search and its own SQL on any table" },
-  { key: "sense_agent", title: "Agent spec: GAME_AGENT_SENSE", detail: "With Cortex Sense: EnableCortexSense on GAME_ANALYTICS_CTX_V2" },
+  { key: "sense_agent", title: "Agent spec: GAME_AGENT_SENSE", detail: "With Cortex Sense: cortex_sense tool on GAME_ANALYTICS_CTX_V2" },
   { key: "questions", title: "Demo question bank", detail: "demo_questions.yaml: 2 ties and 8 long-tail questions" },
 ];
 

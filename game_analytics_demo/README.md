@@ -226,8 +226,8 @@ GAME_AGENT_ANALYST (capable analyst, no Cortex Sense)
 - **GAME_AGENT_ANALYST** ([spec](agents/GAME_AGENT_ANALYST.yaml)) has the same Cortex Analyst tool and `data_to_chart`, plus the experimental flags `AgenticAnalystAllowArbitrarySQL` (its own SQL on any readable table), `EnableStandaloneExecuteSqlTool` (catalog and tool search) and `FallbackWarehouse: COMPUTE_WH`. Its instructions are an analyst's habits (explore schemas, check cardinality, state assumptions) without business rules. It shows what a strong agent gets right by exploring, and which rules it still breaks without Cortex Sense. Agent tools run with the caller's role, so an analyst agent run as `ACCOUNTADMIN` can also find and read the knowledge-base stage. This agent represents a highly capable analyst that can search across schemas to discover tables, views, and more then build reasonable SQL to answer questions. While the analyst can probe and discover data and helpful joins, it does not have the full breadth of rules for how the business operates.
 
 ```
-GAME_AGENT_SENSE (EnableCortexSense)
-  └── cortex_sense → CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2
+GAME_AGENT_SENSE (declared cortex_sense tool)
+  └── game_analytics_context → CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2
         ├── feedback rules        business definitions and procedures (served as corrections)
         ├── catalog_objects       table documents for GAME_CATALOG and GAME_SALES
         ├── query_history         query patterns primed by install/05-prime-query-history.sql
@@ -236,7 +236,7 @@ GAME_AGENT_SENSE (EnableCortexSense)
         └── stage_files           FY2027 portfolio strategy memo, EU loot box regulatory brief
 ```
 
-- **GAME_AGENT_SENSE** ([spec](agents/GAME_AGENT_SENSE.yaml)) sets `experimental.EnableCortexSense: true` and declares one tool, `data_to_chart`. Its orchestration instructions tell it to call `cortex_sense` with the context before writing any SQL, to read the corrections first, and to use fully qualified `CORTEX_SENSE_DEMO` names. Business definitions don't go in the spec; they go in feedback rules or the semantic view.
+- **GAME_AGENT_SENSE** ([spec](agents/GAME_AGENT_SENSE.yaml)) declares two tools: `game_analytics_context` (`type: cortex_sense`, bound in `tool_resources` to `CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2` and running SQL on `COMPUTE_WH`) and `data_to_chart`. No experimental flags are needed; declaring the cortex_sense tool also creates `system_execute_sql`. Its orchestration instructions tell it to call `game_analytics_context` before writing any SQL, to read the corrections first, and to use fully qualified `CORTEX_SENSE_DEMO` names. Business definitions don't go in the spec; they go in feedback rules or the semantic view.
 
 
 ## The Cortex Sense context

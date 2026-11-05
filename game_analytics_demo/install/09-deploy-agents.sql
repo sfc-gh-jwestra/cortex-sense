@@ -122,13 +122,11 @@ $$;
 CREATE OR REPLACE AGENT CORTEX_SENSE_DEMO.AGENTS.GAME_AGENT_SENSE
   FROM SPECIFICATION $$
 # GAME_AGENT_SENSE — CORTEX_SENSE_DEMO.AGENTS
-# "With Cortex Sense": grounded by CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2.
+# "With Cortex Sense": grounded by CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2
+# through a declared cortex_sense tool (game_analytics_context).
 
 models:
   orchestration: auto
-
-experimental:
-  EnableCortexSense: true
 
 instructions:
   response: >
@@ -141,11 +139,11 @@ instructions:
   orchestration: >
     You are a gaming portfolio analyst for Sony Interactive Entertainment.
     "Our", "we", and "my portfolio" refer to Sony.
-    For every question, call cortex_sense with context_names
-    ["CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2"] before writing any SQL.
+    For every question, call game_analytics_context with the user's question
+    before writing any SQL.
     Read corrections first (business rules), then documents (table schemas,
     query patterns). Plan the query explicitly, noting any data gaps, then
-    execute.
+    execute it with system_execute_sql.
 
     Use fully qualified table names (CORTEX_SENSE_DEMO.GAME_CATALOG,
     CORTEX_SENSE_DEMO.GAME_SALES).
@@ -164,8 +162,23 @@ instructions:
 
 tools:
   - tool_spec:
+      type: cortex_sense
+      name: game_analytics_context
+      description: >-
+        Business rules, table schemas, join paths, query patterns and knowledge
+        documents for Sony's game portfolio: catalog (genres, platforms,
+        franchises, awards, accessibility, monetization, ratings) and sales
+        (revenue by title, month and quarter). Call first for every question.
+  - tool_spec:
       type: data_to_chart
       name: data_to_chart
+
+tool_resources:
+  game_analytics_context:
+    context_name: CORTEX_SENSE_DEMO.CONTEXTS.GAME_ANALYTICS_CTX_V2
+    execution_environment:
+      type: warehouse
+      warehouse: COMPUTE_WH
 
 $$;
 
